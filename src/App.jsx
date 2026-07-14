@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const initialForm = {
   date: '', venue: '', fullName: '', mobileNumber: '', icLast4: '',
   caseClosedPolicyNumber: '', agentName: '', agentId: '',
-  currentInsuranceCompany: '', ageBand: '', maritalStatus: '',
+  currentInsuranceCompany: '', ageBand: '', maritialStatus: '',
   employmentType: '', employmentTypeOther: '', monthlyPersonalIncome: '',
   existingInsurancePlans: [], financialPriorities: [], consent: false,
   formAccessCode: '',
@@ -11,7 +11,7 @@ const initialForm = {
 
 const options = {
   ageBand: ['<25', '25-34', '35-44', '45-54', '55-64', '65+'],
-  maritalStatus: ['Single', 'Married', 'Married with children', 'Divorced / widowed'],
+  maritialStatus: ['Single', 'Married', 'Married with children', 'Divorced / widowed'],
   employmentType: ['Salaried', 'Self-employed', 'Business owner', 'Homemaker', 'Retired', 'Student', 'Others'],
   monthlyPersonalIncome: ['<RM3k', 'RM3-6k', 'RM6-10k', 'RM10-20k', '>RM20k'],
   existingInsurancePlans: ['Medical Card', 'Life / Term', 'Critical Illness', 'Savings', 'Legacy', 'Not sure', "I don’t have one"],
@@ -70,14 +70,21 @@ export default function App() {
   const [status, setStatus] = useState({ type: '', message: '' })
   const [submitting, setSubmitting] = useState(false)
   const submissionLock = useRef(false)
+  const statusRef = useRef(null)
+
+  useEffect(() => {
+    if (status.message) statusRef.current?.focus()
+  }, [status.message])
 
   const update = ({ target }) => {
     const { name, value, type, checked } = target
+    if (status.message) setStatus({ type: '', message: '' })
     setForm((current) => ({ ...current, [name]: type === 'checkbox' ? checked : value }))
   }
 
   const updateMultiple = ({ target }) => {
     const { name, value, checked } = target
+    if (status.message) setStatus({ type: '', message: '' })
     setForm((current) => ({
       ...current,
       [name]: checked
@@ -101,6 +108,8 @@ export default function App() {
     submissionLock.current = true
     setSubmitting(true)
     setStatus({ type: '', message: '' })
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), 20000)
     try {
       const payload = {
         ...form,
@@ -113,14 +122,17 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       })
-      if (!response.ok) throw new Error('Submission failed')
+      const result = await response.json().catch(() => null)
+      if (!response.ok || result?.success !== true) throw new Error('Submission failed')
       setForm(initialForm)
       setStatus({ type: 'success', message: 'Survey submitted successfully. Thank you.' })
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
       setStatus({ type: 'error', message: 'Submission failed. Please try again or contact admin.' })
     } finally {
+      window.clearTimeout(timeoutId)
       submissionLock.current = false
       setSubmitting(false)
     }
@@ -130,26 +142,30 @@ export default function App() {
     <main className="page-shell">
       <div className="survey-card">
         <header className="survey-header">
-          <div className="brand-mark" aria-hidden="true">✓</div>
+          <img
+            className="brand-logo"
+            src="/assets/great-eastern-ocbc-logo-v2.png"
+            alt="Great Eastern — An OCBC Company"
+          />
           <div>
-            <p className="eyebrow">Lead Gathering Survey</p>
             <h1>SURVEY FORM</h1>
-            <p>Your goals matter. Tell us how we can help you plan with confidence.</p>
           </div>
         </header>
 
-        {status.message && <div className={`notice ${status.type}`} role="status">{status.message}</div>}
+        {status.message && (
+          <div
+            ref={statusRef}
+            className={`notice ${status.type}`}
+            role={status.type === 'error' ? 'alert' : 'status'}
+            aria-live={status.type === 'error' ? 'assertive' : 'polite'}
+            tabIndex="-1"
+          >
+            {status.message}
+          </div>
+        )}
 
-        <form onSubmit={submit} noValidate={false}>
-          <p className="required-note"><b>*</b> Required fields</p>
-          <Section number="01" title="Event Details">
-            <div className="grid two-col">
-              <TextField label="Date" name="date" type="date" value={form.date} onChange={update} required />
-              <TextField label="Venue" name="venue" value={form.venue} onChange={update} maxLength="150" placeholder="Enter event venue" required />
-            </div>
-          </Section>
-
-          <Section number="02" title="Personal Details">
+        <form onSubmit={submit} aria-busy={submitting}>
+          <Section number="01" title="Personal Details">
             <div className="grid two-col">
               <TextField label="Full Name" name="fullName" value={form.fullName} onChange={update} maxLength="150" autoComplete="name" required />
               <TextField label="Mobile Number" name="mobileNumber" type="tel" value={form.mobileNumber} onChange={update} pattern="[+0-9 ]+" title="Use only numbers, spaces, and +" inputMode="tel" autoComplete="tel" required />
@@ -163,9 +179,9 @@ export default function App() {
             </div>
           </Section>
 
-          <Section number="03" title="Your Profile">
+          <Section number="02" title="Your Profile">
             <ChoiceGroup legend="Age Band" name="ageBand" values={options.ageBand} selected={form.ageBand} onChange={update} required />
-            <ChoiceGroup legend="Marital Status" name="maritalStatus" values={options.maritalStatus} selected={form.maritalStatus} onChange={update} required />
+            <ChoiceGroup legend="Maritial Status" name="maritialStatus" values={options.maritialStatus} selected={form.maritialStatus} onChange={update} required />
             <ChoiceGroup legend="Employment type" name="employmentType" values={options.employmentType} selected={form.employmentType} onChange={update} required />
             {form.employmentType === 'Others' && (
               <div className="conditional-field">
@@ -177,17 +193,24 @@ export default function App() {
             <ChoiceGroup legend="Financial Priorities in the next 12 months" name="financialPriorities" values={options.financialPriorities} selected={form.financialPriorities} onChange={updateMultiple} multiple required />
           </Section>
 
+          <Section number="03" title="Event Details">
+            <div className="grid two-col">
+              <TextField label="Date" name="date" type="date" value={form.date} onChange={update} required />
+              <TextField label="Venue" name="venue" value={form.venue} onChange={update} maxLength="150" placeholder="Enter event venue" required />
+            </div>
+          </Section>
+
           <Section number="04" title="Consent & Submission">
             <label className="consent-box">
               <input type="checkbox" name="consent" checked={form.consent} onChange={update} required />
               <span>By participating in this survey and submitting your personal data, you consent to the collection, use, processing, and disclosure of your personal data for follow-up and advisory purposes. <b>*</b></span>
             </label>
             <div className="access-row">
-              <TextField label="Form Access Code" name="formAccessCode" type="password" value={form.formAccessCode} onChange={update} autoComplete="off" required />
-              <p>Obtain this code from the event representative.</p>
+              <TextField label="Form Access Code" name="formAccessCode" type="password" value={form.formAccessCode} onChange={update} autoComplete="off" aria-describedby="access-code-help" required />
+              <p id="access-code-help">Obtain this code from the event representative. It is checked securely when you submit.</p>
             </div>
             <button className="submit-button" type="submit" disabled={submitting}>
-              {submitting ? <><span className="spinner" /> Submitting…</> : 'Submit Survey'}
+              {submitting ? <><span className="spinner" aria-hidden="true" /> Submitting…</> : 'Submit Survey'}
             </button>
           </Section>
         </form>
