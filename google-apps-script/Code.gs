@@ -11,7 +11,7 @@ const EXPECTED_HEADERS = [
   'Age Band',
   'Marital Status',
   'Employment type',
-  'Monthly Personal Income',
+  'Monthly Income',
   'Existing insurance plans',
   'Financial Priorities in the next 12 months',
 ];

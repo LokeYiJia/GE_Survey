@@ -36,7 +36,7 @@ FORM_ACCESS_CODE=your-private-code
 
 1. Create or open the destination Google Sheet.
 2. Name the target tab exactly `Leads Gathering`.
-3. Add these headers to row 1 in this exact order (including the source spelling `Marital Status`):
+3. Add these headers to row 1 in this exact order:
 
    1. Date
    2. Venue
