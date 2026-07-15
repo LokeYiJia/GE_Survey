@@ -14,12 +14,11 @@ const validBody = {
   fullName: 'Test Person',
   mobileNumber: '+60 12 345 6789',
   icLast4: '1234',
-  caseClosedPolicyNumber: '',
   agentName: 'Test Agent',
   agentId: 'GE123',
   currentInsuranceCompany: '',
   ageBand: '25-34',
-  maritialStatus: 'Single',
+  maritalStatus: 'Single',
   employmentType: 'Salaried',
   monthlyPersonalIncome: 'RM3-6k',
   existingInsurancePlans: ['Medical Card'],
@@ -64,7 +63,7 @@ test('rejects an incorrect access code without calling the webhook', async () =>
   assert.equal(webhookCalled, false)
 })
 
-test('forwards only the 15 cleaned Sheet fields in exact column order', async () => {
+test('forwards only the 14 cleaned Sheet fields in exact column order', async () => {
   let forwardedUrl
   let forwardedPayload
   globalThis.fetch = async (url, options) => {
@@ -82,12 +81,11 @@ test('forwards only the 15 cleaned Sheet fields in exact column order', async ()
     'fullName',
     'mobileNumber',
     'icLast4',
-    'caseClosedPolicyNumber',
     'agentName',
     'agentId',
     'currentInsuranceCompany',
     'ageBand',
-    'maritialStatus',
+    'maritalStatus',
     'employmentType',
     'monthlyPersonalIncome',
     'existingInsurancePlans',

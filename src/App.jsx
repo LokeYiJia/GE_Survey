@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 
 const initialForm = {
   date: '', venue: '', fullName: '', mobileNumber: '', icLast4: '',
-  caseClosedPolicyNumber: '', agentName: '', agentId: '',
-  currentInsuranceCompany: '', ageBand: '', maritialStatus: '',
+  agentName: '', agentId: '',
+  currentInsuranceCompany: '', ageBand: '', maritalStatus: '',
   employmentType: '', employmentTypeOther: '', monthlyPersonalIncome: '',
   existingInsurancePlans: [], financialPriorities: [], consent: false,
   formAccessCode: '',
@@ -11,7 +11,7 @@ const initialForm = {
 
 const options = {
   ageBand: ['<25', '25-34', '35-44', '45-54', '55-64', '65+'],
-  maritialStatus: ['Single', 'Married', 'Married with children', 'Divorced / widowed'],
+  maritalStatus: ['Single', 'Married', 'Married with children', 'Divorced / widowed'],
   employmentType: ['Salaried', 'Self-employed', 'Business owner', 'Homemaker', 'Retired', 'Student', 'Others'],
   monthlyPersonalIncome: ['<RM3k', 'RM3-6k', 'RM6-10k', 'RM10-20k', '>RM20k'],
   existingInsurancePlans: ['Medical Card', 'Life / Term', 'Critical Illness', 'Savings', 'Legacy', 'Not sure', "I don’t have one"],
@@ -167,10 +167,11 @@ export default function App() {
         <form onSubmit={submit} aria-busy={submitting}>
           <Section number="01" title="Personal Details">
             <div className="grid two-col">
-              <TextField label="Full Name" name="fullName" value={form.fullName} onChange={update} maxLength="150" autoComplete="name" required />
+              <div className="grid-full-width">
+                <TextField label="Full Name" name="fullName" value={form.fullName} onChange={update} maxLength="150" autoComplete="name" required />
+              </div>
               <TextField label="Mobile Number" name="mobileNumber" type="tel" value={form.mobileNumber} onChange={update} pattern="[+0-9 ]+" title="Use only numbers, spaces, and +" inputMode="tel" autoComplete="tel" required />
               <TextField label="IC Number (last 4 digits)" name="icLast4" value={form.icLast4} onChange={update} pattern="[0-9]{4}" title="Enter exactly 4 numbers" inputMode="numeric" maxLength="4" required />
-              <TextField label="Case Closed (Policy Number)" name="caseClosedPolicyNumber" value={form.caseClosedPolicyNumber} onChange={update} maxLength="80" />
               <TextField label="Agent Name" name="agentName" value={form.agentName} onChange={update} maxLength="150" required />
               <TextField label="Agent ID" name="agentId" value={form.agentId} onChange={update} maxLength="80" required />
               <div className="grid-full-width">
@@ -181,7 +182,7 @@ export default function App() {
 
           <Section number="02" title="Your Profile">
             <ChoiceGroup legend="Age Band" name="ageBand" values={options.ageBand} selected={form.ageBand} onChange={update} required />
-            <ChoiceGroup legend="Maritial Status" name="maritialStatus" values={options.maritialStatus} selected={form.maritialStatus} onChange={update} required />
+            <ChoiceGroup legend="Marital Status" name="maritalStatus" values={options.maritalStatus} selected={form.maritalStatus} onChange={update} required />
             <ChoiceGroup legend="Employment type" name="employmentType" values={options.employmentType} selected={form.employmentType} onChange={update} required />
             {form.employmentType === 'Others' && (
               <div className="conditional-field">

@@ -36,30 +36,29 @@ FORM_ACCESS_CODE=your-private-code
 
 1. Create or open the destination Google Sheet.
 2. Name the target tab exactly `Leads Gathering`.
-3. Add these headers to row 1 in this exact order (including the source spelling `Maritial Status`):
+3. Add these headers to row 1 in this exact order (including the source spelling `Marital Status`):
 
    1. Date
    2. Venue
    3. Full Name
    4. Mobile Number
    5. IC Number (last 4 digits)
-   6. Case Closed (Policy Number)
-   7. Agent Name
-   8. Agent ID
-   9. Current Insurance Company
-   10. Age Band
-   11. Maritial Status
-   12. Employment type
-   13. Monthly Personal Income
-   14. Existing insurance plans
-   15. Financial Priorities in the next 12 months
+   6. Agent Name
+   7. Agent ID
+   8. Current Insurance Company
+   9. Age Band
+   10. Marital Status
+   11. Employment type
+   12. Monthly Personal Income
+   13. Existing insurance plans
+   14. Financial Priorities in the next 12 months
 
 4. In the Sheet, select **Extensions → Apps Script**.
 5. Replace the editor contents with [`google-apps-script/Code.gs`](google-apps-script/Code.gs) and save.
 6. Select **Deploy → New deployment**, choose **Web app**, execute as yourself, and set access to **Anyone**.
 7. Authorize the script and copy the deployed Web App URL ending in `/exec`. Keep it private.
 
-The script verifies the 15 existing headers, then uses `appendRow` to add submissions below them. It reads row 1 for validation but never writes to or changes it. If the script changes later, create a new deployment version from **Manage deployments**.
+The script verifies the 14 existing headers, then uses `appendRow` to add submissions below them. It reads row 1 for validation but never writes to or changes it. If the script changes later, create a new deployment version from **Manage deployments**.
 
 ## Deploy to Cloudflare Pages
 

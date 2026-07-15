@@ -2,7 +2,7 @@ const MAX_BODY_BYTES = 20_000
 
 const REQUIRED_TEXT_FIELDS = [
   'date', 'venue', 'fullName', 'mobileNumber', 'icLast4', 'agentName',
-  'agentId', 'ageBand', 'maritialStatus', 'employmentType',
+  'agentId', 'ageBand', 'maritalStatus', 'employmentType',
   'monthlyPersonalIncome', 'formAccessCode',
 ]
 
@@ -12,12 +12,11 @@ const FIELD_LIMITS = {
   fullName: 150,
   mobileNumber: 30,
   icLast4: 4,
-  caseClosedPolicyNumber: 80,
   agentName: 150,
   agentId: 80,
   currentInsuranceCompany: 150,
   ageBand: 10,
-  maritialStatus: 30,
+  maritalStatus: 30,
   employmentType: 110,
   monthlyPersonalIncome: 20,
   formAccessCode: 128,
@@ -25,7 +24,7 @@ const FIELD_LIMITS = {
 
 const ALLOWED_VALUES = {
   ageBand: ['<25', '25-34', '35-44', '45-54', '55-64', '65+'],
-  maritialStatus: ['Single', 'Married', 'Married with children', 'Divorced / widowed'],
+  maritalStatus: ['Single', 'Married', 'Married with children', 'Divorced / widowed'],
   employmentType: ['Salaried', 'Self-employed', 'Business owner', 'Homemaker', 'Retired', 'Student'],
   monthlyPersonalIncome: ['<RM3k', 'RM3-6k', 'RM6-10k', 'RM10-20k', '>RM20k'],
   existingInsurancePlans: ['Medical Card', 'Life / Term', 'Critical Illness', 'Savings', 'Legacy', 'Not sure', "I don’t have one"],
@@ -153,7 +152,7 @@ export async function onRequest({ request, env }) {
   if (!isValidDate(cleaned.date)) return json({ success: false, error: 'Invalid date' }, 400)
 
   if (!ALLOWED_VALUES.ageBand.includes(cleaned.ageBand)
-    || !ALLOWED_VALUES.maritialStatus.includes(cleaned.maritialStatus)
+    || !ALLOWED_VALUES.maritalStatus.includes(cleaned.maritalStatus)
     || !ALLOWED_VALUES.monthlyPersonalIncome.includes(cleaned.monthlyPersonalIncome)) {
     return json({ success: false, error: 'Invalid profile selection' }, 400)
   }
@@ -187,12 +186,11 @@ export async function onRequest({ request, env }) {
     fullName: cleaned.fullName,
     mobileNumber: cleaned.mobileNumber,
     icLast4: cleaned.icLast4,
-    caseClosedPolicyNumber: cleaned.caseClosedPolicyNumber,
     agentName: cleaned.agentName,
     agentId: cleaned.agentId,
     currentInsuranceCompany: cleaned.currentInsuranceCompany,
     ageBand: cleaned.ageBand,
-    maritialStatus: cleaned.maritialStatus,
+    maritalStatus: cleaned.maritalStatus,
     employmentType: cleaned.employmentType,
     monthlyPersonalIncome: cleaned.monthlyPersonalIncome,
     existingInsurancePlans: existingInsurancePlans.join(', '),
