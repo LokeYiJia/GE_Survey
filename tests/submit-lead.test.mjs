@@ -99,3 +99,16 @@ test('rejects a roadshow state outside West Malaysia', async () => {
   })
   assert.equal(response.status, 400)
 })
+
+test('returns the Apps Script diagnostic when the destination reports an error', async () => {
+  globalThis.fetch = async () => Response.json({
+    success: false,
+    error: 'Sheet header mismatch. Column 6 does not match',
+  })
+
+  const response = await onRequest({ request: post(), env })
+  const result = await response.json()
+  assert.equal(response.status, 502)
+  assert.equal(result.error, 'Data destination reported an error')
+  assert.equal(result.details, 'Sheet header mismatch. Column 6 does not match')
+})

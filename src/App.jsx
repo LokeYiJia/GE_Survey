@@ -141,12 +141,20 @@ export default function App() {
         signal: controller.signal,
       })
       const result = await response.json().catch(() => null)
-      if (!response.ok || result?.success !== true) throw new Error('Submission failed')
+      if (!response.ok || result?.success !== true) {
+        throw new Error(result?.details || '')
+      }
       setForm(initialForm)
       setStatus({ type: 'success', message: 'Survey submitted successfully. Thank you.' })
       window.scrollTo({ top: 0, behavior: 'smooth' })
-    } catch {
-      setStatus({ type: 'error', message: 'Submission failed. Please try again or contact admin.' })
+    } catch (error) {
+      const details = error instanceof Error ? error.message.trim() : ''
+      setStatus({
+        type: 'error',
+        message: details
+          ? `Submission failed: ${details}`
+          : 'Submission failed. Please try again or contact admin.',
+      })
     } finally {
       window.clearTimeout(timeoutId)
       submissionLock.current = false
