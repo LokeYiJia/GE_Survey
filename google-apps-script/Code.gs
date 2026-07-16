@@ -1,4 +1,5 @@
 const SHEET_NAME = 'Leads Gathering';
+const SCRIPT_BUILD = '2026-07-16-header-diagnostics-v1';
 const EXPECTED_HEADERS = [
   'Date',
   'Roadshow Location',
@@ -82,7 +83,11 @@ function doPost(e) {
     return jsonResponse({ success: true });
   } catch (error) {
     console.error(error);
-    return jsonResponse({ success: false, error: error.message || 'Unable to append submission' });
+    const message = error && error.message ? String(error.message) : String(error);
+    return jsonResponse({
+      success: false,
+      error: '[' + SCRIPT_BUILD + '] ' + message,
+    });
   }
 }
 
