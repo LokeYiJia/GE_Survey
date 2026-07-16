@@ -5,7 +5,7 @@ const EXPECTED_HEADERS = [
   'Roadshow State',
   'Full Name',
   'Mobile Number',
-  'IC Number (last 4 digits)',
+  'IC Num (last 4 digits)',
   'Agent Name',
   'Agent ID',
   'GM Name',
