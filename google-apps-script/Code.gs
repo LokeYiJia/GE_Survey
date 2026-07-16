@@ -12,9 +12,9 @@ const EXPECTED_HEADERS = [
   'Current Insurance Company',
   'Age Band',
   'Marital Status',
-  'Employment type',
+  'Employment Type',
   'Monthly Income',
-  'Existing insurance plans',
+  'Existing Insurance Plan',
   'Financial Priorities in the next 12 months',
 ];
 const COLUMN_KEYS = [
@@ -50,11 +50,17 @@ function doPost(e) {
 
     // Read and verify row 1, but never write to or modify it.
     const headers = sheet.getRange(1, 1, 1, EXPECTED_HEADERS.length).getDisplayValues()[0];
-    const headersMatch = EXPECTED_HEADERS.every(function (header, index) {
-      return headers[index] === header;
-    });
-    if (!headersMatch) {
-      throw new Error('Sheet headers do not match the required column order');
+    const headerMismatches = EXPECTED_HEADERS.reduce(function (mismatches, header, index) {
+      if (headers[index] !== header) {
+        mismatches.push(
+          'Column ' + (index + 1) + ': expected "' + header
+          + '", found "' + (headers[index] || '(blank)') + '"'
+        );
+      }
+      return mismatches;
+    }, []);
+    if (headerMismatches.length > 0) {
+      throw new Error('Sheet header mismatch. ' + headerMismatches.join('; '));
     }
 
     if (!data || typeof data !== 'object' || Array.isArray(data)) {
@@ -76,7 +82,7 @@ function doPost(e) {
     return jsonResponse({ success: true });
   } catch (error) {
     console.error(error);
-    return jsonResponse({ success: false, error: 'Unable to append submission' });
+    return jsonResponse({ success: false, error: error.message || 'Unable to append submission' });
   }
 }
 

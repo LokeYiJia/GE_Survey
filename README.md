@@ -49,9 +49,9 @@ GOOGLE_SHEETS_WEBHOOK_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/
    10. Current Insurance Company
    11. Age Band
    12. Marital Status
-   13. Employment type
+   13. Employment Type
    14. Monthly Personal Income
-   15. Existing insurance plans
+   15. Existing Insurance Plan
    16. Financial Priorities in the next 12 months
 
 4. In the Sheet, select **Extensions → Apps Script**.

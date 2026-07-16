@@ -207,7 +207,7 @@ export async function onRequest({ request, env }) {
 
     const result = await webhookResponse.json().catch(() => null)
     if (!result || result.success !== true) {
-      console.error('Unexpected Google Apps Script response')
+      console.error('Google Apps Script reported an error:', result?.error || 'Unexpected response')
       return json({ success: false, error: 'Data destination reported an error' }, 502)
     }
     return json({ success: true })
