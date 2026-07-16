@@ -4,18 +4,19 @@ import { onRequest } from '../functions/api/submit-lead.js'
 
 const originalFetch = globalThis.fetch
 const env = {
-  FORM_ACCESS_CODE: 'private-code',
   GOOGLE_SHEETS_WEBHOOK_URL: 'https://script.google.com/macros/s/test-deployment/exec',
 }
 
 const validBody = {
   date: '2026-07-14',
-  venue: '  Kuala Lumpur Convention Centre  ',
+  roadshowLocation: '  Kuala Lumpur Convention Centre  ',
+  roadshowState: 'Kuala Lumpur',
   fullName: 'Test Person',
   mobileNumber: '+60 12 345 6789',
   icLast4: '1234',
   agentName: 'Test Agent',
   agentId: 'GE123',
+  gmName: 'Test GM',
   currentInsuranceCompany: '',
   ageBand: '25-34',
   maritalStatus: 'Single',
@@ -24,7 +25,6 @@ const validBody = {
   existingInsurancePlans: ['Medical Card'],
   financialPriorities: ['Build emergency fund'],
   consent: true,
-  formAccessCode: 'private-code',
 }
 
 function post(body = validBody, headers = {}) {
@@ -48,22 +48,7 @@ test('rejects non-POST methods with Allow header', async () => {
   assert.equal(response.headers.get('Allow'), 'POST')
 })
 
-test('rejects an incorrect access code without calling the webhook', async () => {
-  let webhookCalled = false
-  globalThis.fetch = async () => {
-    webhookCalled = true
-    return new Response()
-  }
-
-  const response = await onRequest({
-    request: post({ ...validBody, formAccessCode: 'wrong-code' }),
-    env,
-  })
-  assert.equal(response.status, 403)
-  assert.equal(webhookCalled, false)
-})
-
-test('forwards only the 14 cleaned Sheet fields in exact column order', async () => {
+test('forwards only the 16 cleaned Sheet fields in exact column order', async () => {
   let forwardedUrl
   let forwardedPayload
   globalThis.fetch = async (url, options) => {
@@ -77,12 +62,14 @@ test('forwards only the 14 cleaned Sheet fields in exact column order', async ()
   assert.equal(forwardedUrl, env.GOOGLE_SHEETS_WEBHOOK_URL)
   assert.deepEqual(Object.keys(forwardedPayload), [
     'date',
-    'venue',
+    'roadshowLocation',
+    'roadshowState',
     'fullName',
     'mobileNumber',
     'icLast4',
     'agentName',
     'agentId',
+    'gmName',
     'currentInsuranceCompany',
     'ageBand',
     'maritalStatus',
@@ -91,8 +78,7 @@ test('forwards only the 14 cleaned Sheet fields in exact column order', async ()
     'existingInsurancePlans',
     'financialPriorities',
   ])
-  assert.equal(forwardedPayload.venue, 'Kuala Lumpur Convention Centre')
-  assert.equal('formAccessCode' in forwardedPayload, false)
+  assert.equal(forwardedPayload.roadshowLocation, 'Kuala Lumpur Convention Centre')
   assert.equal('consent' in forwardedPayload, false)
 })
 
@@ -104,4 +90,12 @@ test('rejects requests that are not JSON', async () => {
   })
   const response = await onRequest({ request, env })
   assert.equal(response.status, 415)
+})
+
+test('rejects a roadshow state outside West Malaysia', async () => {
+  const response = await onRequest({
+    request: post({ ...validBody, roadshowState: 'Sabah' }),
+    env,
+  })
+  assert.equal(response.status, 400)
 })

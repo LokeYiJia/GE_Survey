@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 
 const initialForm = {
-  date: '', venue: '', fullName: '', mobileNumber: '', icLast4: '',
-  agentName: '', agentId: '',
+  date: '', roadshowLocation: '', roadshowState: '', fullName: '', mobileNumber: '', icLast4: '',
+  agentName: '', agentId: '', gmName: '',
   currentInsuranceCompany: '', ageBand: '', maritalStatus: '',
   employmentType: '', employmentTypeOther: '', monthlyPersonalIncome: '',
   existingInsurancePlans: [], financialPriorities: [], consent: false,
-  formAccessCode: '',
 }
 
 const options = {
+  roadshowState: [
+    'Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang',
+    'Pulau Pinang', 'Perak', 'Perlis', 'Selangor', 'Terengganu',
+    'Kuala Lumpur', 'Putrajaya',
+  ],
   ageBand: ['<25', '25-34', '35-44', '45-54', '55-64', '65+'],
   maritalStatus: ['Single', 'Married', 'Married with children', 'Divorced / widowed'],
   employmentType: ['Salaried', 'Self-employed', 'Business owner', 'Homemaker', 'Retired', 'Student', 'Others'],
@@ -24,11 +28,23 @@ const options = {
   ],
 }
 
-function TextField({ label, name, required, ...props }) {
+function TextField({ label, name, required, autoComplete = 'off', ...props }) {
   return (
     <label className="field">
       <span>{label}{required && <b aria-hidden="true"> *</b>}</span>
-      <input name={name} required={required} {...props} />
+      <input name={name} required={required} autoComplete={autoComplete} {...props} />
+    </label>
+  )
+}
+
+function SelectField({ label, name, value, values, onChange, required }) {
+  return (
+    <label className="field">
+      <span>{label}{required && <b aria-hidden="true"> *</b>}</span>
+      <select name={name} value={value} onChange={onChange} required={required} autoComplete="off">
+        <option value="" disabled>Select a state</option>
+        {values.map((option) => <option value={option} key={option}>{option}</option>)}
+      </select>
     </label>
   )
 }
@@ -164,16 +180,14 @@ export default function App() {
           </div>
         )}
 
-        <form onSubmit={submit} aria-busy={submitting}>
+        <form onSubmit={submit} aria-busy={submitting} autoComplete="off">
           <Section number="01" title="Personal Details">
             <div className="grid two-col">
               <div className="grid-full-width">
-                <TextField label="Full Name" name="fullName" value={form.fullName} onChange={update} maxLength="150" autoComplete="name" required />
+                <TextField label="Full Name" name="fullName" value={form.fullName} onChange={update} maxLength="150" required />
               </div>
-              <TextField label="Mobile Number" name="mobileNumber" type="tel" value={form.mobileNumber} onChange={update} pattern="[+0-9 ]+" title="Use only numbers, spaces, and +" inputMode="tel" autoComplete="tel" required />
+              <TextField label="Mobile Number" name="mobileNumber" type="tel" value={form.mobileNumber} onChange={update} pattern="[+0-9 ]+" title="Use only numbers, spaces, and +" inputMode="tel" required />
               <TextField label="IC Number (last 4 digits)" name="icLast4" value={form.icLast4} onChange={update} pattern="[0-9]{4}" title="Enter exactly 4 numbers" inputMode="numeric" maxLength="4" required />
-              <TextField label="Agent Name" name="agentName" value={form.agentName} onChange={update} maxLength="150" required />
-              <TextField label="Agent ID" name="agentId" value={form.agentId} onChange={update} maxLength="80" required />
               <div className="grid-full-width">
                 <TextField label="Current Insurance Company" name="currentInsuranceCompany" value={form.currentInsuranceCompany} onChange={update} maxLength="150" placeholder="If applicable" />
               </div>
@@ -194,10 +208,18 @@ export default function App() {
             <ChoiceGroup legend="Financial Priorities in the next 12 months" name="financialPriorities" values={options.financialPriorities} selected={form.financialPriorities} onChange={updateMultiple} multiple required />
           </Section>
 
-          <Section number="03" title="Event Details">
+          <Section number="03" title="For Agent Use">
             <div className="grid two-col">
               <TextField label="Date" name="date" type="date" value={form.date} onChange={update} required />
-              <TextField label="Venue" name="venue" value={form.venue} onChange={update} maxLength="150" placeholder="Enter event venue" required />
+              <TextField label="Roadshow Location (e.g. Lotus Kepong)" name="roadshowLocation" value={form.roadshowLocation} onChange={update} maxLength="150" placeholder="Enter roadshow location" required />
+              <div className="grid-full-width">
+                <SelectField label="Roadshow State" name="roadshowState" value={form.roadshowState} values={options.roadshowState} onChange={update} required />
+              </div>
+              <TextField label="Agent Name" name="agentName" value={form.agentName} onChange={update} maxLength="150" required />
+              <TextField label="Agent ID" name="agentId" value={form.agentId} onChange={update} maxLength="80" required />
+              <div className="grid-full-width">
+                <TextField label="GM Name" name="gmName" value={form.gmName} onChange={update} maxLength="150" required />
+              </div>
             </div>
           </Section>
 
@@ -206,10 +228,6 @@ export default function App() {
               <input type="checkbox" name="consent" checked={form.consent} onChange={update} required />
               <span>By participating in this survey and submitting your personal data, you consent to the collection, use, processing, and disclosure of your personal data for follow-up and advisory purposes. <b>*</b></span>
             </label>
-            <div className="access-row">
-              <TextField label="Form Access Code" name="formAccessCode" type="password" value={form.formAccessCode} onChange={update} autoComplete="off" aria-describedby="access-code-help" required />
-              <p id="access-code-help">Obtain this code from the event representative. It is checked securely when you submit.</p>
-            </div>
             <button className="submit-button" type="submit" disabled={submitting}>
               {submitting ? <><span className="spinner" aria-hidden="true" /> Submitting…</> : 'Submit Survey'}
             </button>

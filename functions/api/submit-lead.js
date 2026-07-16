@@ -1,28 +1,34 @@
 const MAX_BODY_BYTES = 20_000
 
 const REQUIRED_TEXT_FIELDS = [
-  'date', 'venue', 'fullName', 'mobileNumber', 'icLast4', 'agentName',
-  'agentId', 'ageBand', 'maritalStatus', 'employmentType',
-  'monthlyPersonalIncome', 'formAccessCode',
+  'date', 'roadshowLocation', 'roadshowState', 'fullName', 'mobileNumber', 'icLast4', 'agentName',
+  'agentId', 'gmName', 'ageBand', 'maritalStatus', 'employmentType',
+  'monthlyPersonalIncome',
 ]
 
 const FIELD_LIMITS = {
   date: 10,
-  venue: 150,
+  roadshowLocation: 150,
+  roadshowState: 100,
   fullName: 150,
   mobileNumber: 30,
   icLast4: 4,
   agentName: 150,
   agentId: 80,
+  gmName: 150,
   currentInsuranceCompany: 150,
   ageBand: 10,
   maritalStatus: 30,
   employmentType: 110,
   monthlyPersonalIncome: 20,
-  formAccessCode: 128,
 }
 
 const ALLOWED_VALUES = {
+  roadshowState: [
+    'Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang',
+    'Pulau Pinang', 'Perak', 'Perlis', 'Selangor', 'Terengganu',
+    'Kuala Lumpur', 'Putrajaya',
+  ],
   ageBand: ['<25', '25-34', '35-44', '45-54', '55-64', '65+'],
   maritalStatus: ['Single', 'Married', 'Married with children', 'Divorced / widowed'],
   employmentType: ['Salaried', 'Self-employed', 'Business owner', 'Homemaker', 'Retired', 'Student'],
@@ -50,18 +56,6 @@ const json = (data, status = 200, extraHeaders = {}) => new Response(JSON.string
 })
 
 const cleanText = (value) => typeof value === 'string' ? value.trim() : ''
-
-function secretsMatch(input, expected) {
-  const inputBytes = encoder.encode(input)
-  const expectedBytes = encoder.encode(expected)
-  const length = Math.max(inputBytes.length, expectedBytes.length)
-  let mismatch = inputBytes.length ^ expectedBytes.length
-
-  for (let index = 0; index < length; index += 1) {
-    mismatch |= (inputBytes[index] || 0) ^ (expectedBytes[index] || 0)
-  }
-  return mismatch === 0
-}
 
 function isValidDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
@@ -96,8 +90,8 @@ export async function onRequest({ request, env }) {
     return json({ success: false, error: 'Method not allowed' }, 405, { Allow: 'POST' })
   }
 
-  if (!env.FORM_ACCESS_CODE || !isGoogleAppsScriptUrl(env.GOOGLE_SHEETS_WEBHOOK_URL)) {
-    console.error('Required server environment variables are missing or invalid')
+  if (!isGoogleAppsScriptUrl(env.GOOGLE_SHEETS_WEBHOOK_URL)) {
+    console.error('Google Apps Script environment variable is missing or invalid')
     return json({ success: false, error: 'Server configuration error' }, 500)
   }
 
@@ -151,6 +145,10 @@ export async function onRequest({ request, env }) {
   }
   if (!isValidDate(cleaned.date)) return json({ success: false, error: 'Invalid date' }, 400)
 
+  if (!ALLOWED_VALUES.roadshowState.includes(cleaned.roadshowState)) {
+    return json({ success: false, error: 'Invalid roadshow state' }, 400)
+  }
+
   if (!ALLOWED_VALUES.ageBand.includes(cleaned.ageBand)
     || !ALLOWED_VALUES.maritalStatus.includes(cleaned.maritalStatus)
     || !ALLOWED_VALUES.monthlyPersonalIncome.includes(cleaned.monthlyPersonalIncome)) {
@@ -176,18 +174,16 @@ export async function onRequest({ request, env }) {
     return json({ success: false, error: 'Invalid or missing checkbox selection' }, 400)
   }
 
-  if (!secretsMatch(cleaned.formAccessCode, env.FORM_ACCESS_CODE)) {
-    return json({ success: false, error: 'Invalid access code' }, 403)
-  }
-
   const payload = {
     date: cleaned.date,
-    venue: cleaned.venue,
+    roadshowLocation: cleaned.roadshowLocation,
+    roadshowState: cleaned.roadshowState,
     fullName: cleaned.fullName,
     mobileNumber: cleaned.mobileNumber,
     icLast4: cleaned.icLast4,
     agentName: cleaned.agentName,
     agentId: cleaned.agentId,
+    gmName: cleaned.gmName,
     currentInsuranceCompany: cleaned.currentInsuranceCompany,
     ageBand: cleaned.ageBand,
     maritalStatus: cleaned.maritalStatus,

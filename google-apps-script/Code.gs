@@ -1,12 +1,14 @@
 const SHEET_NAME = 'Leads Gathering';
 const EXPECTED_HEADERS = [
   'Date',
-  'Venue',
+  'Roadshow Location',
+  'Roadshow State',
   'Full Name',
   'Mobile Number',
   'IC Number (last 4 digits)',
   'Agent Name',
   'Agent ID',
+  'GM Name',
   'Current Insurance Company',
   'Age Band',
   'Marital Status',
@@ -17,12 +19,14 @@ const EXPECTED_HEADERS = [
 ];
 const COLUMN_KEYS = [
   'date',
-  'venue',
+  'roadshowLocation',
+  'roadshowState',
   'fullName',
   'mobileNumber',
   'icLast4',
   'agentName',
   'agentId',
+  'gmName',
   'currentInsuranceCompany',
   'ageBand',
   'maritalStatus',
