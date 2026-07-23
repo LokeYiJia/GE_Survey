@@ -53,6 +53,7 @@ GOOGLE_SHEETS_WEBHOOK_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/
    14. Monthly Personal Income
    15. Existing Insurance Plan
    16. Financial Priorities in the next 12 months
+   17. Submission Timestemp
 
 4. In the Sheet, select **Extensions → Apps Script**.
 5. Replace the editor contents with [`google-apps-script/Code.gs`](google-apps-script/Code.gs) and save.
