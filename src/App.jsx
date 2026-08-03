@@ -94,6 +94,7 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false)
   const [showSubmissionDetails, setShowSubmissionDetails] = useState(false)
   const [submissionDetails, setSubmissionDetails] = useState(initialSubmissionDetails)
+  const [submissionId, setSubmissionId] = useState('')
   const submissionLock = useRef(false)
   const statusRef = useRef(null)
   const modalTitleRef = useRef(null)
@@ -129,7 +130,7 @@ export default function App() {
     setSubmissionDetails((current) => ({ ...current, [name]: value }))
   }
 
-  const openSubmissionDetails = (event) => {
+  const createSubmission = async (event) => {
     event.preventDefault()
     if (submissionLock.current) return
     if (!form.existingInsurancePlans.length || !form.financialPriorities.length) {
@@ -141,11 +142,50 @@ export default function App() {
       return
     }
 
+    submissionLock.current = true
+    setSubmitting(true)
     setStatus({ type: '', message: '' })
-    setShowSubmissionDetails(true)
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), 20000)
+    try {
+      const payload = {
+        ...form,
+        action: 'create',
+        employmentType: form.employmentType === 'Others'
+          ? `Others: ${form.employmentTypeOther.trim()}`
+          : form.employmentType,
+      }
+      delete payload.employmentTypeOther
+
+      const response = await fetch('/api/submit-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      })
+      const result = await response.json().catch(() => null)
+      if (!response.ok || result?.success !== true || !result?.submissionId) {
+        throw new Error(result?.details || '')
+      }
+
+      setSubmissionId(result.submissionId)
+      setShowSubmissionDetails(true)
+    } catch (error) {
+      const details = error instanceof Error ? error.message.trim() : ''
+      setStatus({
+        type: 'error',
+        message: details
+          ? `Submission failed: ${details}`
+          : 'Submission failed. Please try again or contact admin.',
+      })
+    } finally {
+      window.clearTimeout(timeoutId)
+      submissionLock.current = false
+      setSubmitting(false)
+    }
   }
 
-  const submit = async (event) => {
+  const completeSubmission = async (event) => {
     event.preventDefault()
     if (submissionLock.current) return
 
@@ -162,14 +202,11 @@ export default function App() {
     const timeoutId = window.setTimeout(() => controller.abort(), 20000)
     try {
       const payload = {
-        ...form,
+        action: 'complete',
+        submissionId,
         ...submissionDetails,
         anp,
-        employmentType: form.employmentType === 'Others'
-          ? `Others: ${form.employmentTypeOther.trim()}`
-          : form.employmentType,
       }
-      delete payload.employmentTypeOther
       const response = await fetch('/api/submit-lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -182,6 +219,7 @@ export default function App() {
       }
       setForm(initialForm)
       setSubmissionDetails(initialSubmissionDetails)
+      setSubmissionId('')
       setShowSubmissionDetails(false)
       setStatus({ type: 'success', message: 'Survey submitted successfully. Thank you.' })
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -226,7 +264,7 @@ export default function App() {
           </div>
         )}
 
-        <form onSubmit={openSubmissionDetails} aria-busy={submitting} autoComplete="off">
+        <form onSubmit={createSubmission} aria-busy={submitting} autoComplete="off">
           <Section number="01" title="Personal Details">
             <div className="grid two-col">
               <div className="grid-full-width">
@@ -286,7 +324,7 @@ export default function App() {
         <div className="modal-backdrop">
           <form
             className="submission-modal"
-            onSubmit={submit}
+            onSubmit={completeSubmission}
             role="dialog"
             aria-modal="true"
             aria-labelledby="submission-details-title"
@@ -321,9 +359,6 @@ export default function App() {
             )}
 
             <div className="modal-actions">
-              <button className="secondary-button" type="button" onClick={() => setShowSubmissionDetails(false)} disabled={submitting}>
-                Back
-              </button>
               <button className="submit-button" type="submit" disabled={submitting}>
                 {submitting ? <><span className="spinner" aria-hidden="true" /> Submitting...</> : 'Confirm & Submit'}
               </button>

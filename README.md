@@ -58,13 +58,14 @@ GOOGLE_SHEETS_WEBHOOK_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/
    19. On the Spot Close Case
    20. ANP
    21. Submission Timestamp
+   22. Submission ID
 
 4. In the Sheet, select **Extensions → Apps Script**.
 5. Replace the editor contents with [`google-apps-script/Code.gs`](google-apps-script/Code.gs) and save.
 6. Select **Deploy → New deployment**, choose **Web app**, execute as yourself, and set access to **Anyone**.
 7. Authorize the script and copy the deployed Web App URL ending in `/exec`. Keep it private.
 
-The script verifies all 21 headers, then appends the 20 submitted values and a server-generated submission timestamp. It reads row 1 for validation but never writes to or changes it. If the script changes later, create a new deployment version from **Manage deployments**.
+The script verifies all 22 headers. The first submit appends the 16 lead fields, four blank outcome cells, a server-generated timestamp, and a unique submission ID. The popup submit uses that ID to update only the four outcome cells in the same row. It reads row 1 for validation but never writes to or changes it. The `Submission ID` column can be hidden in Google Sheets. If the script changes later, create a new deployment version from **Manage deployments**.
 
 ## Deploy to Cloudflare Pages
 
@@ -74,7 +75,7 @@ The script verifies all 21 headers, then appends the 20 submitted values and a s
    - `GOOGLE_SHEETS_WEBHOOK_URL`: the Apps Script `/exec` URL.
 4. Redeploy after adding or changing variables.
 
-The browser posts only to `/api/submit-lead`. Cloudflare validates and cleans the payload, then forwards only the Sheet fields to Apps Script.
+The browser posts only to `/api/submit-lead`. Cloudflare validates and cleans both stages, then forwards either the lead creation data or the four outcome fields and submission ID to Apps Script.
 
 ## Test a submission
 

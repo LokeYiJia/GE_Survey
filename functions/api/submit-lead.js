@@ -1,12 +1,12 @@
 const MAX_BODY_BYTES = 20_000
 
-const REQUIRED_TEXT_FIELDS = [
+const BASE_REQUIRED_TEXT_FIELDS = [
   'date', 'roadshowLocation', 'roadshowState', 'fullName', 'mobileNumber', 'icLast4', 'agentName',
   'agentId', 'gmName', 'ageBand', 'maritalStatus', 'employmentType',
-  'monthlyPersonalIncome', 'presentationDone', 'potentialFollowUp', 'onTheSpotCloseCase', 'anp',
+  'monthlyPersonalIncome',
 ]
 
-const FIELD_LIMITS = {
+const BASE_FIELD_LIMITS = {
   date: 10,
   roadshowLocation: 150,
   roadshowState: 100,
@@ -21,6 +21,9 @@ const FIELD_LIMITS = {
   maritalStatus: 30,
   employmentType: 110,
   monthlyPersonalIncome: 20,
+}
+
+const OUTCOME_FIELD_LIMITS = {
   presentationDone: 3,
   potentialFollowUp: 3,
   onTheSpotCloseCase: 3,
@@ -123,90 +126,117 @@ export async function onRequest({ request, env }) {
     return json({ success: false, error: 'Invalid request body' }, 400)
   }
 
-  const cleaned = Object.fromEntries(
-    Object.keys(FIELD_LIMITS).map((field) => [field, cleanText(body[field])]),
-  )
+  const action = cleanText(body.action)
+  let payload
 
-  for (const field of REQUIRED_TEXT_FIELDS) {
-    if (!cleaned[field]) {
-      return json({ success: false, error: `Missing required field: ${field}` }, 400)
+  if (action === 'create') {
+    const cleaned = Object.fromEntries(
+      Object.keys(BASE_FIELD_LIMITS).map((field) => [field, cleanText(body[field])]),
+    )
+
+    for (const field of BASE_REQUIRED_TEXT_FIELDS) {
+      if (!cleaned[field]) {
+        return json({ success: false, error: `Missing required field: ${field}` }, 400)
+      }
     }
-  }
-  for (const [field, limit] of Object.entries(FIELD_LIMITS)) {
-    if (cleaned[field].length > limit) {
-      return json({ success: false, error: `Field is too long: ${field}` }, 400)
+    for (const [field, limit] of Object.entries(BASE_FIELD_LIMITS)) {
+      if (cleaned[field].length > limit) {
+        return json({ success: false, error: `Field is too long: ${field}` }, 400)
+      }
     }
-  }
 
-  if (body.consent !== true) return json({ success: false, error: 'Consent is required' }, 400)
+    if (body.consent !== true) return json({ success: false, error: 'Consent is required' }, 400)
 
-  const phoneDigits = cleaned.mobileNumber.replace(/\D/g, '')
-  if (!/^\+?[0-9 ]+$/.test(cleaned.mobileNumber) || phoneDigits.length < 7 || phoneDigits.length > 15) {
-    return json({ success: false, error: 'Invalid mobile number' }, 400)
-  }
-  if (!/^\d{4}$/.test(cleaned.icLast4)) {
-    return json({ success: false, error: 'IC last 4 must contain exactly 4 numbers' }, 400)
-  }
-  if (!isValidDate(cleaned.date)) return json({ success: false, error: 'Invalid date' }, 400)
+    const phoneDigits = cleaned.mobileNumber.replace(/\D/g, '')
+    if (!/^\+?[0-9 ]+$/.test(cleaned.mobileNumber) || phoneDigits.length < 7 || phoneDigits.length > 15) {
+      return json({ success: false, error: 'Invalid mobile number' }, 400)
+    }
+    if (!/^\d{4}$/.test(cleaned.icLast4)) {
+      return json({ success: false, error: 'IC last 4 must contain exactly 4 numbers' }, 400)
+    }
+    if (!isValidDate(cleaned.date)) return json({ success: false, error: 'Invalid date' }, 400)
 
-  if (!ALLOWED_VALUES.roadshowState.includes(cleaned.roadshowState)) {
-    return json({ success: false, error: 'Invalid roadshow state' }, 400)
-  }
+    if (!ALLOWED_VALUES.roadshowState.includes(cleaned.roadshowState)) {
+      return json({ success: false, error: 'Invalid roadshow state' }, 400)
+    }
 
-  if (!ALLOWED_VALUES.ageBand.includes(cleaned.ageBand)
-    || !ALLOWED_VALUES.maritalStatus.includes(cleaned.maritalStatus)
-    || !ALLOWED_VALUES.monthlyPersonalIncome.includes(cleaned.monthlyPersonalIncome)) {
-    return json({ success: false, error: 'Invalid profile selection' }, 400)
-  }
+    if (!ALLOWED_VALUES.ageBand.includes(cleaned.ageBand)
+      || !ALLOWED_VALUES.maritalStatus.includes(cleaned.maritalStatus)
+      || !ALLOWED_VALUES.monthlyPersonalIncome.includes(cleaned.monthlyPersonalIncome)) {
+      return json({ success: false, error: 'Invalid profile selection' }, 400)
+    }
 
-  const isStandardEmployment = ALLOWED_VALUES.employmentType.includes(cleaned.employmentType)
-  const isSpecifiedOther = cleaned.employmentType.startsWith('Others: ')
-    && cleaned.employmentType.slice(8).trim().length > 0
-  if (!isStandardEmployment && !isSpecifiedOther) {
-    return json({ success: false, error: 'Invalid employment type' }, 400)
-  }
+    const isStandardEmployment = ALLOWED_VALUES.employmentType.includes(cleaned.employmentType)
+    const isSpecifiedOther = cleaned.employmentType.startsWith('Others: ')
+      && cleaned.employmentType.slice(8).trim().length > 0
+    if (!isStandardEmployment && !isSpecifiedOther) {
+      return json({ success: false, error: 'Invalid employment type' }, 400)
+    }
 
-  const existingInsurancePlans = cleanAllowedArray(
-    body.existingInsurancePlans,
-    ALLOWED_VALUES.existingInsurancePlans,
-  )
-  const financialPriorities = cleanAllowedArray(
-    body.financialPriorities,
-    ALLOWED_VALUES.financialPriorities,
-  )
-  if (!existingInsurancePlans || !financialPriorities) {
-    return json({ success: false, error: 'Invalid or missing checkbox selection' }, 400)
-  }
+    const existingInsurancePlans = cleanAllowedArray(
+      body.existingInsurancePlans,
+      ALLOWED_VALUES.existingInsurancePlans,
+    )
+    const financialPriorities = cleanAllowedArray(
+      body.financialPriorities,
+      ALLOWED_VALUES.financialPriorities,
+    )
+    if (!existingInsurancePlans || !financialPriorities) {
+      return json({ success: false, error: 'Invalid or missing checkbox selection' }, 400)
+    }
 
-  if (![cleaned.presentationDone, cleaned.potentialFollowUp, cleaned.onTheSpotCloseCase]
-    .every((value) => value === 'Yes' || value === 'No')) {
-    return json({ success: false, error: 'Invalid Yes or No submission detail' }, 400)
-  }
-  if (!/^\d+(?:\.\d{1,2})?$/.test(cleaned.anp)) {
-    return json({ success: false, error: 'ANP must be a number with no more than two decimal places' }, 400)
-  }
+    payload = {
+      action,
+      date: cleaned.date,
+      roadshowLocation: cleaned.roadshowLocation,
+      roadshowState: cleaned.roadshowState,
+      fullName: cleaned.fullName,
+      mobileNumber: cleaned.mobileNumber,
+      icLast4: cleaned.icLast4,
+      agentName: cleaned.agentName,
+      agentId: cleaned.agentId,
+      gmName: cleaned.gmName,
+      currentInsuranceCompany: cleaned.currentInsuranceCompany,
+      ageBand: cleaned.ageBand,
+      maritalStatus: cleaned.maritalStatus,
+      employmentType: cleaned.employmentType,
+      monthlyPersonalIncome: cleaned.monthlyPersonalIncome,
+      existingInsurancePlans: existingInsurancePlans.join(', '),
+      financialPriorities: financialPriorities.join(', '),
+    }
+  } else if (action === 'complete') {
+    const submissionId = cleanText(body.submissionId)
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(submissionId)) {
+      return json({ success: false, error: 'Invalid submission ID' }, 400)
+    }
 
-  const payload = {
-    date: cleaned.date,
-    roadshowLocation: cleaned.roadshowLocation,
-    roadshowState: cleaned.roadshowState,
-    fullName: cleaned.fullName,
-    mobileNumber: cleaned.mobileNumber,
-    icLast4: cleaned.icLast4,
-    agentName: cleaned.agentName,
-    agentId: cleaned.agentId,
-    gmName: cleaned.gmName,
-    currentInsuranceCompany: cleaned.currentInsuranceCompany,
-    ageBand: cleaned.ageBand,
-    maritalStatus: cleaned.maritalStatus,
-    employmentType: cleaned.employmentType,
-    monthlyPersonalIncome: cleaned.monthlyPersonalIncome,
-    existingInsurancePlans: existingInsurancePlans.join(', '),
-    financialPriorities: financialPriorities.join(', '),
-    presentationDone: cleaned.presentationDone,
-    potentialFollowUp: cleaned.potentialFollowUp,
-    onTheSpotCloseCase: cleaned.onTheSpotCloseCase,
-    anp: cleaned.anp,
+    const cleaned = Object.fromEntries(
+      Object.keys(OUTCOME_FIELD_LIMITS).map((field) => [field, cleanText(body[field])]),
+    )
+    for (const [field, limit] of Object.entries(OUTCOME_FIELD_LIMITS)) {
+      if (!cleaned[field]) return json({ success: false, error: `Missing required field: ${field}` }, 400)
+      if (cleaned[field].length > limit) {
+        return json({ success: false, error: `Field is too long: ${field}` }, 400)
+      }
+    }
+    if (![cleaned.presentationDone, cleaned.potentialFollowUp, cleaned.onTheSpotCloseCase]
+      .every((value) => value === 'Yes' || value === 'No')) {
+      return json({ success: false, error: 'Invalid Yes or No submission detail' }, 400)
+    }
+    if (!/^\d+(?:\.\d{1,2})?$/.test(cleaned.anp)) {
+      return json({ success: false, error: 'ANP must be a number with no more than two decimal places' }, 400)
+    }
+
+    payload = {
+      action,
+      submissionId,
+      presentationDone: cleaned.presentationDone,
+      potentialFollowUp: cleaned.potentialFollowUp,
+      onTheSpotCloseCase: cleaned.onTheSpotCloseCase,
+      anp: cleaned.anp,
+    }
+  } else {
+    return json({ success: false, error: 'Invalid submission action' }, 400)
   }
 
   try {
@@ -232,6 +262,13 @@ export async function onRequest({ request, env }) {
         error: 'Data destination reported an error',
         details,
       }, 502)
+    }
+    if (action === 'create') {
+      const submissionId = cleanText(result.submissionId)
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(submissionId)) {
+        return json({ success: false, error: 'Data destination returned an invalid submission ID' }, 502)
+      }
+      return json({ success: true, submissionId })
     }
     return json({ success: true })
   } catch (error) {

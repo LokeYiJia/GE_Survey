@@ -1,5 +1,5 @@
 const SHEET_NAME = 'Leads Gathering';
-const SCRIPT_BUILD = '2026-08-03-submission-details-v1';
+const SCRIPT_BUILD = '2026-08-03-two-stage-submission-v1';
 const EXPECTED_HEADERS = [
   'Date',
   'Roadshow Location',
@@ -22,8 +22,9 @@ const EXPECTED_HEADERS = [
   'On the Spot Close Case',
   'ANP',
   'Submission Timestamp',
+  'Submission ID',
 ];
-const COLUMN_KEYS = [
+const BASE_COLUMN_KEYS = [
   'date',
   'roadshowLocation',
   'roadshowState',
@@ -40,6 +41,8 @@ const COLUMN_KEYS = [
   'monthlyPersonalIncome',
   'existingInsurancePlans',
   'financialPriorities',
+];
+const OUTCOME_COLUMN_KEYS = [
   'presentationDone',
   'potentialFollowUp',
   'onTheSpotCloseCase',
@@ -77,24 +80,57 @@ function doPost(e) {
       throw new Error('Invalid payload');
     }
 
-    // Mapping this fixed list preserves the exact Sheet column order.
-    const row = COLUMN_KEYS.map(function (key) {
-      return safeCell(data[key]);
-    });
-
     const lock = LockService.getDocumentLock();
     lock.waitLock(10000);
     try {
-      const submissionTimestamp = new Date();
-      sheet.appendRow([...row, submissionTimestamp]);
-      const appendedRowNumber = sheet.getLastRow();
-      sheet
-        .getRange(appendedRowNumber, EXPECTED_HEADERS.length)
-        .setNumberFormat('yyyy-mm-dd hh:mm:ss');
+      if (data.action === 'create') {
+        // The four outcome cells start blank and are completed by the second request.
+        const baseRow = BASE_COLUMN_KEYS.map(function (key) {
+          return safeCell(data[key]);
+        });
+        const emptyOutcomes = OUTCOME_COLUMN_KEYS.map(function () { return ''; });
+        const submissionTimestamp = new Date();
+        const submissionId = Utilities.getUuid();
+
+        sheet.appendRow([
+          ...baseRow,
+          ...emptyOutcomes,
+          submissionTimestamp,
+          submissionId,
+        ]);
+
+        const appendedRowNumber = sheet.getLastRow();
+        sheet.getRange(appendedRowNumber, 21).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+        return jsonResponse({ success: true, submissionId: submissionId });
+      }
+
+      if (data.action === 'complete') {
+        const submissionId = data.submissionId == null ? '' : String(data.submissionId);
+        if (!/^[0-9a-f-]{36}$/i.test(submissionId)) {
+          throw new Error('Invalid submission ID');
+        }
+
+        const dataRowCount = sheet.getLastRow() - 1;
+        if (dataRowCount < 1) throw new Error('Submission not found');
+
+        const idCell = sheet
+          .getRange(2, 22, dataRowCount, 1)
+          .createTextFinder(submissionId)
+          .matchEntireCell(true)
+          .findNext();
+        if (!idCell) throw new Error('Submission not found');
+
+        const outcomeRow = OUTCOME_COLUMN_KEYS.map(function (key) {
+          return safeCell(data[key]);
+        });
+        sheet.getRange(idCell.getRow(), 17, 1, outcomeRow.length).setValues([outcomeRow]);
+        return jsonResponse({ success: true });
+      }
+
+      throw new Error('Invalid submission action');
     } finally {
       lock.releaseLock();
     }
-    return jsonResponse({ success: true });
   } catch (error) {
     console.error(error);
     const message = error && error.message ? String(error.message) : String(error);

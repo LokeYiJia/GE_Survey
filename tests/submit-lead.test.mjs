@@ -6,8 +6,10 @@ const originalFetch = globalThis.fetch
 const env = {
   GOOGLE_SHEETS_WEBHOOK_URL: 'https://script.google.com/macros/s/test-deployment/exec',
 }
+const submissionId = '123e4567-e89b-12d3-a456-426614174000'
 
 const validBody = {
+  action: 'create',
   date: '2026-07-14',
   roadshowLocation: '  Kuala Lumpur Convention Centre  ',
   roadshowState: 'Kuala Lumpur',
@@ -24,11 +26,16 @@ const validBody = {
   monthlyPersonalIncome: 'RM3-6k',
   existingInsurancePlans: ['Medical Card'],
   financialPriorities: ['Build emergency fund'],
+  consent: true,
+}
+
+const validCompletion = {
+  action: 'complete',
+  submissionId,
   presentationDone: 'Yes',
   potentialFollowUp: 'No',
   onTheSpotCloseCase: 'No',
   anp: '1200.50',
-  consent: true,
 }
 
 function post(body = validBody, headers = {}) {
@@ -52,19 +59,21 @@ test('rejects non-POST methods with Allow header', async () => {
   assert.equal(response.headers.get('Allow'), 'POST')
 })
 
-test('forwards only the 20 cleaned Sheet fields in exact column order', async () => {
+test('creates a lead and returns its submission ID', async () => {
   let forwardedUrl
   let forwardedPayload
   globalThis.fetch = async (url, options) => {
     forwardedUrl = url
     forwardedPayload = JSON.parse(options.body)
-    return Response.json({ success: true })
+    return Response.json({ success: true, submissionId })
   }
 
   const response = await onRequest({ request: post(), env })
   assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), { success: true, submissionId })
   assert.equal(forwardedUrl, env.GOOGLE_SHEETS_WEBHOOK_URL)
   assert.deepEqual(Object.keys(forwardedPayload), [
+    'action',
     'date',
     'roadshowLocation',
     'roadshowState',
@@ -81,24 +90,41 @@ test('forwards only the 20 cleaned Sheet fields in exact column order', async ()
     'monthlyPersonalIncome',
     'existingInsurancePlans',
     'financialPriorities',
+  ])
+  assert.equal(forwardedPayload.action, 'create')
+  assert.equal(forwardedPayload.roadshowLocation, 'Kuala Lumpur Convention Centre')
+  assert.equal('consent' in forwardedPayload, false)
+})
+
+test('forwards only the submission ID and four outcome fields when completing a lead', async () => {
+  let forwardedPayload
+  globalThis.fetch = async (_url, options) => {
+    forwardedPayload = JSON.parse(options.body)
+    return Response.json({ success: true })
+  }
+
+  const response = await onRequest({ request: post(validCompletion), env })
+  assert.equal(response.status, 200)
+  assert.deepEqual(Object.keys(forwardedPayload), [
+    'action',
+    'submissionId',
     'presentationDone',
     'potentialFollowUp',
     'onTheSpotCloseCase',
     'anp',
   ])
-  assert.equal(forwardedPayload.roadshowLocation, 'Kuala Lumpur Convention Centre')
-  assert.equal('consent' in forwardedPayload, false)
+  assert.deepEqual(forwardedPayload, validCompletion)
 })
 
 test('rejects invalid popup answers and ANP values', async () => {
   const invalidAnswer = await onRequest({
-    request: post({ ...validBody, presentationDone: 'Maybe' }),
+    request: post({ ...validCompletion, presentationDone: 'Maybe' }),
     env,
   })
   assert.equal(invalidAnswer.status, 400)
 
   const invalidAnp = await onRequest({
-    request: post({ ...validBody, anp: 'RM 1,200' }),
+    request: post({ ...validCompletion, anp: 'RM 1,200' }),
     env,
   })
   const result = await invalidAnp.json()
