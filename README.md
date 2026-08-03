@@ -42,7 +42,7 @@ GOOGLE_SHEETS_WEBHOOK_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/
    3. Roadshow State
    4. Full Name
    5. Mobile Number
-   6. IC Number (last 4 digits)
+   6. IC Num (last 4 digits)
    7. Agent Name
    8. Agent ID
    9. GM Name
@@ -50,17 +50,21 @@ GOOGLE_SHEETS_WEBHOOK_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/
    11. Age Band
    12. Marital Status
    13. Employment Type
-   14. Monthly Personal Income
+   14. Monthly Income
    15. Existing Insurance Plan
    16. Financial Priorities in the next 12 months
-   17. Submission Timestemp
+   17. Presentation Done
+   18. Potential Follow Up
+   19. On the Spot Close Case
+   20. ANP
+   21. Submission Timestamp
 
 4. In the Sheet, select **Extensions → Apps Script**.
 5. Replace the editor contents with [`google-apps-script/Code.gs`](google-apps-script/Code.gs) and save.
 6. Select **Deploy → New deployment**, choose **Web app**, execute as yourself, and set access to **Anyone**.
 7. Authorize the script and copy the deployed Web App URL ending in `/exec`. Keep it private.
 
-The script verifies the 16 existing headers, then uses `appendRow` to add submissions below them. It reads row 1 for validation but never writes to or changes it. If the script changes later, create a new deployment version from **Manage deployments**.
+The script verifies all 21 headers, then appends the 20 submitted values and a server-generated submission timestamp. It reads row 1 for validation but never writes to or changes it. If the script changes later, create a new deployment version from **Manage deployments**.
 
 ## Deploy to Cloudflare Pages
 

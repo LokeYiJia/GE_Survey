@@ -3,7 +3,7 @@ const MAX_BODY_BYTES = 20_000
 const REQUIRED_TEXT_FIELDS = [
   'date', 'roadshowLocation', 'roadshowState', 'fullName', 'mobileNumber', 'icLast4', 'agentName',
   'agentId', 'gmName', 'ageBand', 'maritalStatus', 'employmentType',
-  'monthlyPersonalIncome',
+  'monthlyPersonalIncome', 'presentationDone', 'potentialFollowUp', 'onTheSpotCloseCase', 'anp',
 ]
 
 const FIELD_LIMITS = {
@@ -21,6 +21,10 @@ const FIELD_LIMITS = {
   maritalStatus: 30,
   employmentType: 110,
   monthlyPersonalIncome: 20,
+  presentationDone: 3,
+  potentialFollowUp: 3,
+  onTheSpotCloseCase: 3,
+  anp: 20,
 }
 
 const ALLOWED_VALUES = {
@@ -174,6 +178,14 @@ export async function onRequest({ request, env }) {
     return json({ success: false, error: 'Invalid or missing checkbox selection' }, 400)
   }
 
+  if (![cleaned.presentationDone, cleaned.potentialFollowUp, cleaned.onTheSpotCloseCase]
+    .every((value) => value === 'Yes' || value === 'No')) {
+    return json({ success: false, error: 'Invalid Yes or No submission detail' }, 400)
+  }
+  if (!/^\d+(?:\.\d{1,2})?$/.test(cleaned.anp)) {
+    return json({ success: false, error: 'ANP must be a number with no more than two decimal places' }, 400)
+  }
+
   const payload = {
     date: cleaned.date,
     roadshowLocation: cleaned.roadshowLocation,
@@ -191,6 +203,10 @@ export async function onRequest({ request, env }) {
     monthlyPersonalIncome: cleaned.monthlyPersonalIncome,
     existingInsurancePlans: existingInsurancePlans.join(', '),
     financialPriorities: financialPriorities.join(', '),
+    presentationDone: cleaned.presentationDone,
+    potentialFollowUp: cleaned.potentialFollowUp,
+    onTheSpotCloseCase: cleaned.onTheSpotCloseCase,
+    anp: cleaned.anp,
   }
 
   try {

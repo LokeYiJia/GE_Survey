@@ -24,6 +24,10 @@ const validBody = {
   monthlyPersonalIncome: 'RM3-6k',
   existingInsurancePlans: ['Medical Card'],
   financialPriorities: ['Build emergency fund'],
+  presentationDone: 'Yes',
+  potentialFollowUp: 'No',
+  onTheSpotCloseCase: 'No',
+  anp: '1200.50',
   consent: true,
 }
 
@@ -48,7 +52,7 @@ test('rejects non-POST methods with Allow header', async () => {
   assert.equal(response.headers.get('Allow'), 'POST')
 })
 
-test('forwards only the 16 cleaned Sheet fields in exact column order', async () => {
+test('forwards only the 20 cleaned Sheet fields in exact column order', async () => {
   let forwardedUrl
   let forwardedPayload
   globalThis.fetch = async (url, options) => {
@@ -77,9 +81,29 @@ test('forwards only the 16 cleaned Sheet fields in exact column order', async ()
     'monthlyPersonalIncome',
     'existingInsurancePlans',
     'financialPriorities',
+    'presentationDone',
+    'potentialFollowUp',
+    'onTheSpotCloseCase',
+    'anp',
   ])
   assert.equal(forwardedPayload.roadshowLocation, 'Kuala Lumpur Convention Centre')
   assert.equal('consent' in forwardedPayload, false)
+})
+
+test('rejects invalid popup answers and ANP values', async () => {
+  const invalidAnswer = await onRequest({
+    request: post({ ...validBody, presentationDone: 'Maybe' }),
+    env,
+  })
+  assert.equal(invalidAnswer.status, 400)
+
+  const invalidAnp = await onRequest({
+    request: post({ ...validBody, anp: 'RM 1,200' }),
+    env,
+  })
+  const result = await invalidAnp.json()
+  assert.equal(invalidAnp.status, 400)
+  assert.equal(result.error, 'ANP must be a number with no more than two decimal places')
 })
 
 test('rejects requests that are not JSON', async () => {

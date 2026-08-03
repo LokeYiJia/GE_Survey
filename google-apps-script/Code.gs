@@ -1,5 +1,5 @@
 const SHEET_NAME = 'Leads Gathering';
-const SCRIPT_BUILD = '2026-07-16-header-diagnostics-v1';
+const SCRIPT_BUILD = '2026-08-03-submission-details-v1';
 const EXPECTED_HEADERS = [
   'Date',
   'Roadshow Location',
@@ -17,6 +17,11 @@ const EXPECTED_HEADERS = [
   'Monthly Income',
   'Existing Insurance Plan',
   'Financial Priorities in the next 12 months',
+  'Presentation Done',
+  'Potential Follow Up',
+  'On the Spot Close Case',
+  'ANP',
+  'Submission Timestamp',
 ];
 const COLUMN_KEYS = [
   'date',
@@ -35,6 +40,10 @@ const COLUMN_KEYS = [
   'monthlyPersonalIncome',
   'existingInsurancePlans',
   'financialPriorities',
+  'presentationDone',
+  'potentialFollowUp',
+  'onTheSpotCloseCase',
+  'anp',
 ];
 
 function doPost(e) {
@@ -76,7 +85,12 @@ function doPost(e) {
     const lock = LockService.getDocumentLock();
     lock.waitLock(10000);
     try {
-      sheet.appendRow(row);
+      const submissionTimestamp = new Date();
+      sheet.appendRow([...row, submissionTimestamp]);
+      const appendedRowNumber = sheet.getLastRow();
+      sheet
+        .getRange(appendedRowNumber, EXPECTED_HEADERS.length)
+        .setNumberFormat('yyyy-mm-dd hh:mm:ss');
     } finally {
       lock.releaseLock();
     }

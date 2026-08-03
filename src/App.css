@@ -256,6 +256,52 @@ b { color: #c51630; }
 .notice.success { color: #17603a; background: #e9f7ef; border: 1px solid #b9e0c9; }
 .notice.error { color: #8d1426; background: #fff0f1; border: 1px solid #efc2c8; }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  overflow-y: auto;
+  background: rgba(10, 24, 43, .7);
+}
+
+.submission-modal {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 40px);
+  padding: 28px;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 5px;
+  box-shadow: 0 22px 65px rgba(0, 0, 0, .32);
+}
+
+.submission-modal > h2 {
+  margin: -28px -28px 18px;
+  padding: 16px 20px;
+  color: #fff;
+  background: #17365f;
+  border-radius: 5px 5px 0 0;
+  font-size: 22px;
+}
+
+.submission-modal > p { margin: 0 0 24px; color: #526176; font-size: 14px; }
+.submission-modal .choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.submission-modal .notice { margin: 20px 0 0; }
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.modal-actions button { flex: 1; min-height: 50px; margin: 0; border-radius: 3px; font-weight: 750; cursor: pointer; }
+.modal-actions .submit-button { width: auto; }
+.secondary-button { color: #17365f; background: #edf2f7; border: 1px solid #c8d2de; }
+.secondary-button:hover:not(:disabled) { background: #dfe8f1; }
+.secondary-button:disabled { opacity: .68; cursor: wait; }
+
 footer {
   padding: 20px 44px;
   color: #667487;
@@ -283,6 +329,9 @@ footer {
   .section-body { padding: 0; }
   .field input, .field select { height: 50px; font-size: 16px; }
   .choice span { min-height: 50px; font-size: 14px; }
+  .submission-modal { padding: 24px 18px; }
+  .submission-modal > h2 { margin: -24px -18px 18px; }
+  .modal-actions { flex-direction: column-reverse; }
   footer { padding: 18px; }
 }
 

@@ -8,6 +8,13 @@ const initialForm = {
   existingInsurancePlans: [], financialPriorities: [], consent: false,
 }
 
+const initialSubmissionDetails = {
+  presentationDone: '',
+  potentialFollowUp: '',
+  onTheSpotCloseCase: '',
+  anp: '',
+}
+
 const options = {
   roadshowState: [
     'Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang',
@@ -85,12 +92,19 @@ export default function App() {
   const [form, setForm] = useState(initialForm)
   const [status, setStatus] = useState({ type: '', message: '' })
   const [submitting, setSubmitting] = useState(false)
+  const [showSubmissionDetails, setShowSubmissionDetails] = useState(false)
+  const [submissionDetails, setSubmissionDetails] = useState(initialSubmissionDetails)
   const submissionLock = useRef(false)
   const statusRef = useRef(null)
+  const modalTitleRef = useRef(null)
 
   useEffect(() => {
     if (status.message) statusRef.current?.focus()
   }, [status.message])
+
+  useEffect(() => {
+    if (showSubmissionDetails) modalTitleRef.current?.focus()
+  }, [showSubmissionDetails])
 
   const update = ({ target }) => {
     const { name, value, type, checked } = target
@@ -109,7 +123,13 @@ export default function App() {
     }))
   }
 
-  const submit = async (event) => {
+  const updateSubmissionDetail = ({ target }) => {
+    const { name, value } = target
+    if (status.message) setStatus({ type: '', message: '' })
+    setSubmissionDetails((current) => ({ ...current, [name]: value }))
+  }
+
+  const openSubmissionDetails = (event) => {
     event.preventDefault()
     if (submissionLock.current) return
     if (!form.existingInsurancePlans.length || !form.financialPriorities.length) {
@@ -121,6 +141,20 @@ export default function App() {
       return
     }
 
+    setStatus({ type: '', message: '' })
+    setShowSubmissionDetails(true)
+  }
+
+  const submit = async (event) => {
+    event.preventDefault()
+    if (submissionLock.current) return
+
+    const anp = submissionDetails.anp.trim()
+    if (!/^\d+(?:\.\d{1,2})?$/.test(anp)) {
+      setStatus({ type: 'error', message: 'ANP must be a number with no more than two decimal places.' })
+      return
+    }
+
     submissionLock.current = true
     setSubmitting(true)
     setStatus({ type: '', message: '' })
@@ -129,6 +163,8 @@ export default function App() {
     try {
       const payload = {
         ...form,
+        ...submissionDetails,
+        anp,
         employmentType: form.employmentType === 'Others'
           ? `Others: ${form.employmentTypeOther.trim()}`
           : form.employmentType,
@@ -145,6 +181,8 @@ export default function App() {
         throw new Error(result?.details || '')
       }
       setForm(initialForm)
+      setSubmissionDetails(initialSubmissionDetails)
+      setShowSubmissionDetails(false)
       setStatus({ type: 'success', message: 'Survey submitted successfully. Thank you.' })
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (error) {
@@ -176,7 +214,7 @@ export default function App() {
           </div>
         </header>
 
-        {status.message && (
+        {status.message && !showSubmissionDetails && (
           <div
             ref={statusRef}
             className={`notice ${status.type}`}
@@ -188,7 +226,7 @@ export default function App() {
           </div>
         )}
 
-        <form onSubmit={submit} aria-busy={submitting} autoComplete="off">
+        <form onSubmit={openSubmissionDetails} aria-busy={submitting} autoComplete="off">
           <Section number="01" title="Personal Details">
             <div className="grid two-col">
               <div className="grid-full-width">
@@ -243,6 +281,56 @@ export default function App() {
         </form>
         <footer>Thank you for taking the time to complete this survey.</footer>
       </div>
+
+      {showSubmissionDetails && (
+        <div className="modal-backdrop">
+          <form
+            className="submission-modal"
+            onSubmit={submit}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="submission-details-title"
+            autoComplete="off"
+          >
+            <h2 id="submission-details-title" ref={modalTitleRef} tabIndex="-1">
+              Submission Details
+            </h2>
+            <p>Complete these questions before submitting the survey.</p>
+
+            <ChoiceGroup legend="Presentation done" name="presentationDone" values={['Yes', 'No']} selected={submissionDetails.presentationDone} onChange={updateSubmissionDetail} required />
+            <ChoiceGroup legend="Potential follow up" name="potentialFollowUp" values={['Yes', 'No']} selected={submissionDetails.potentialFollowUp} onChange={updateSubmissionDetail} required />
+            <ChoiceGroup legend="On the spot close case" name="onTheSpotCloseCase" values={['Yes', 'No']} selected={submissionDetails.onTheSpotCloseCase} onChange={updateSubmissionDetail} required />
+
+            <TextField
+              label="ANP"
+              name="anp"
+              value={submissionDetails.anp}
+              onChange={updateSubmissionDetail}
+              pattern="[0-9]+(?:\.[0-9]{1,2})?"
+              title="Enter a number with no more than two decimal places"
+              inputMode="decimal"
+              maxLength="20"
+              placeholder="0.00"
+              required
+            />
+
+            {status.message && (
+              <div ref={statusRef} className={`notice ${status.type}`} role="alert" aria-live="assertive" tabIndex="-1">
+                {status.message}
+              </div>
+            )}
+
+            <div className="modal-actions">
+              <button className="secondary-button" type="button" onClick={() => setShowSubmissionDetails(false)} disabled={submitting}>
+                Back
+              </button>
+              <button className="submit-button" type="submit" disabled={submitting}>
+                {submitting ? <><span className="spinner" aria-hidden="true" /> Submitting...</> : 'Confirm & Submit'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </main>
   )
 }
