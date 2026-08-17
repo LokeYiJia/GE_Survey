@@ -35,7 +35,7 @@ const validCompletion = {
   presentationDone: 'Yes',
   potentialFollowUp: 'No',
   onTheSpotCloseCase: 'No',
-  anp: '1200.50',
+  anp: '',
 }
 
 function post(body = validBody, headers = {}) {
@@ -96,6 +96,31 @@ test('creates a lead and returns its submission ID', async () => {
   assert.equal('consent' in forwardedPayload, false)
 })
 
+test('allows every Your Profile field to be blank', async () => {
+  let forwardedPayload
+  globalThis.fetch = async (_url, options) => {
+    forwardedPayload = JSON.parse(options.body)
+    return Response.json({ success: true, submissionId })
+  }
+
+  const response = await onRequest({
+    request: post({
+      ...validBody,
+      ageBand: '',
+      maritalStatus: '',
+      employmentType: '',
+      monthlyPersonalIncome: '',
+      existingInsurancePlans: [],
+      financialPriorities: [],
+    }),
+    env,
+  })
+  assert.equal(response.status, 200)
+  assert.equal(forwardedPayload.ageBand, '')
+  assert.equal(forwardedPayload.existingInsurancePlans, '')
+  assert.equal(forwardedPayload.financialPriorities, '')
+})
+
 test('forwards only the submission ID and four outcome fields when completing a lead', async () => {
   let forwardedPayload
   globalThis.fetch = async (_url, options) => {
@@ -124,12 +149,29 @@ test('rejects invalid popup answers and ANP values', async () => {
   assert.equal(invalidAnswer.status, 400)
 
   const invalidAnp = await onRequest({
-    request: post({ ...validCompletion, anp: 'RM 1,200' }),
+    request: post({ ...validCompletion, onTheSpotCloseCase: 'Yes', anp: 'RM 1,200' }),
     env,
   })
   const result = await invalidAnp.json()
   assert.equal(invalidAnp.status, 400)
   assert.equal(result.error, 'ANP must be a number with no more than two decimal places')
+})
+
+test('requires ANP only for an on-the-spot close', async () => {
+  const missingForYes = await onRequest({
+    request: post({ ...validCompletion, onTheSpotCloseCase: 'Yes', anp: '' }),
+    env,
+  })
+  assert.equal(missingForYes.status, 400)
+
+  let forwardedPayload
+  globalThis.fetch = async (_url, options) => {
+    forwardedPayload = JSON.parse(options.body)
+    return Response.json({ success: true })
+  }
+  const noClose = await onRequest({ request: post(validCompletion), env })
+  assert.equal(noClose.status, 200)
+  assert.equal(forwardedPayload.anp, '')
 })
 
 test('rejects requests that are not JSON', async () => {

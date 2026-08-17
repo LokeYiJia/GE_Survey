@@ -1,5 +1,5 @@
 const SHEET_NAME = 'Leads Gathering';
-const SCRIPT_BUILD = '2026-08-03-two-stage-submission-v1';
+const SCRIPT_BUILD = '2026-08-17-optional-profile-conditional-anp-v1';
 const EXPECTED_HEADERS = [
   'Date',
   'Roadshow Location',
@@ -120,6 +120,7 @@ function doPost(e) {
           .findNext();
         if (!idCell) throw new Error('Submission not found');
 
+        validateOutcomes(data);
         const outcomeRow = OUTCOME_COLUMN_KEYS.map(function (key) {
           return safeCell(data[key]);
         });
@@ -139,6 +140,20 @@ function doPost(e) {
       error: '[' + SCRIPT_BUILD + '] ' + message,
     });
   }
+}
+
+function validateOutcomes(data) {
+  ['presentationDone', 'potentialFollowUp', 'onTheSpotCloseCase'].forEach(function (key) {
+    if (data[key] !== 'Yes' && data[key] !== 'No') {
+      throw new Error(key + ' must be Yes or No');
+    }
+  });
+
+  const anp = data.anp == null ? '' : String(data.anp).trim();
+  if (data.onTheSpotCloseCase === 'Yes' && !/^\d+(?:\.\d{1,2})?$/.test(anp)) {
+    throw new Error('ANP must be a number with no more than two decimal places');
+  }
+  data.anp = data.onTheSpotCloseCase === 'No' ? '' : anp;
 }
 
 // Prevent user-supplied values from being interpreted as spreadsheet formulas.

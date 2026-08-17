@@ -75,7 +75,7 @@ The script verifies all 22 headers. The first submit appends the 16 lead fields,
    - `GOOGLE_SHEETS_WEBHOOK_URL`: the Apps Script `/exec` URL.
 4. Redeploy after adding or changing variables.
 
-The browser posts only to `/api/submit-lead`. Cloudflare validates and cleans both stages, then forwards either the lead creation data or the four outcome fields and submission ID to Apps Script.
+The browser posts only to `/api/submit-lead`. Cloudflare validates and cleans both stages, then forwards either the lead creation data or the four outcome fields and submission ID to Apps Script. All questions in `Your Profile` are optional. ANP appears and is required only when `On the Spot Close Case` is `Yes`; it remains blank when the answer is `No`.
 
 ## Test a submission
 

@@ -127,16 +127,16 @@ export default function App() {
   const updateSubmissionDetail = ({ target }) => {
     const { name, value } = target
     if (status.message) setStatus({ type: '', message: '' })
-    setSubmissionDetails((current) => ({ ...current, [name]: value }))
+    setSubmissionDetails((current) => ({
+      ...current,
+      [name]: value,
+      ...(name === 'onTheSpotCloseCase' && value === 'No' ? { anp: '' } : {}),
+    }))
   }
 
   const createSubmission = async (event) => {
     event.preventDefault()
     if (submissionLock.current) return
-    if (!form.existingInsurancePlans.length || !form.financialPriorities.length) {
-      setStatus({ type: 'error', message: 'Please select at least one option in each required checkbox group.' })
-      return
-    }
     if (form.employmentType === 'Others' && !form.employmentTypeOther.trim()) {
       setStatus({ type: 'error', message: 'Please specify your employment type.' })
       return
@@ -190,7 +190,7 @@ export default function App() {
     if (submissionLock.current) return
 
     const anp = submissionDetails.anp.trim()
-    if (!/^\d+(?:\.\d{1,2})?$/.test(anp)) {
+    if (submissionDetails.onTheSpotCloseCase === 'Yes' && !/^\d+(?:\.\d{1,2})?$/.test(anp)) {
       setStatus({ type: 'error', message: 'ANP must be a number with no more than two decimal places.' })
       return
     }
@@ -279,20 +279,27 @@ export default function App() {
           </Section>
 
           <Section number="02" title="Your Profile">
-            <ChoiceGroup legend="Age Band" name="ageBand" values={options.ageBand} selected={form.ageBand} onChange={update} required />
-            <ChoiceGroup legend="Marital Status" name="maritalStatus" values={options.maritalStatus} selected={form.maritalStatus} onChange={update} required />
-            <ChoiceGroup legend="Employment type" name="employmentType" values={options.employmentType} selected={form.employmentType} onChange={update} required />
+            <ChoiceGroup legend="Age Band" name="ageBand" values={options.ageBand} selected={form.ageBand} onChange={update} />
+            <ChoiceGroup legend="Marital Status" name="maritalStatus" values={options.maritalStatus} selected={form.maritalStatus} onChange={update} />
+            <ChoiceGroup legend="Employment type" name="employmentType" values={options.employmentType} selected={form.employmentType} onChange={update} />
             {form.employmentType === 'Others' && (
               <div className="conditional-field">
                 <TextField label="Please specify" name="employmentTypeOther" value={form.employmentTypeOther} onChange={update} maxLength="100" required />
               </div>
             )}
-            <ChoiceGroup legend="Monthly Personal Income" name="monthlyPersonalIncome" values={options.monthlyPersonalIncome} selected={form.monthlyPersonalIncome} onChange={update} required />
-            <ChoiceGroup legend="Existing insurance plans" name="existingInsurancePlans" values={options.existingInsurancePlans} selected={form.existingInsurancePlans} onChange={updateMultiple} multiple required />
-            <ChoiceGroup legend="Financial Priorities in the next 12 months" name="financialPriorities" values={options.financialPriorities} selected={form.financialPriorities} onChange={updateMultiple} multiple required />
+            <ChoiceGroup legend="Monthly Personal Income" name="monthlyPersonalIncome" values={options.monthlyPersonalIncome} selected={form.monthlyPersonalIncome} onChange={update} />
+            <ChoiceGroup legend="Existing insurance plans" name="existingInsurancePlans" values={options.existingInsurancePlans} selected={form.existingInsurancePlans} onChange={updateMultiple} multiple />
+            <ChoiceGroup legend="Financial Priorities in the next 12 months" name="financialPriorities" values={options.financialPriorities} selected={form.financialPriorities} onChange={updateMultiple} multiple />
           </Section>
 
-          <Section number="03" title="For Agent Use">
+          <Section number="03" title="Consent & Submission">
+            <label className="consent-box">
+              <input type="checkbox" name="consent" checked={form.consent} onChange={update} required />
+              <span>By participating in this survey and submitting your personal data, you consent to the collection, use, processing, and disclosure of your personal data for follow-up and advisory purposes. <b>*</b></span>
+            </label>
+          </Section>
+
+          <Section number="04" title="For Agent Use">
             <div className="grid two-col">
               <TextField label="Date" name="date" type="date" value={form.date} onChange={update} required />
               <TextField label="Roadshow Location (e.g. Lotus Kepong)" name="roadshowLocation" value={form.roadshowLocation} onChange={update} maxLength="150" placeholder="Enter roadshow location" required />
@@ -307,15 +314,9 @@ export default function App() {
             </div>
           </Section>
 
-          <Section number="04" title="Consent & Submission">
-            <label className="consent-box">
-              <input type="checkbox" name="consent" checked={form.consent} onChange={update} required />
-              <span>By participating in this survey and submitting your personal data, you consent to the collection, use, processing, and disclosure of your personal data for follow-up and advisory purposes. <b>*</b></span>
-            </label>
-            <button className="submit-button" type="submit" disabled={submitting}>
-              {submitting ? <><span className="spinner" aria-hidden="true" /> Submitting…</> : 'Submit Survey'}
-            </button>
-          </Section>
+          <button className="submit-button" type="submit" disabled={submitting}>
+            {submitting ? <><span className="spinner" aria-hidden="true" /> Submitting…</> : 'Submit Survey'}
+          </button>
         </form>
         <footer>Thank you for taking the time to complete this survey.</footer>
       </div>
@@ -339,18 +340,22 @@ export default function App() {
             <ChoiceGroup legend="Potential follow up" name="potentialFollowUp" values={['Yes', 'No']} selected={submissionDetails.potentialFollowUp} onChange={updateSubmissionDetail} required />
             <ChoiceGroup legend="On the spot close case" name="onTheSpotCloseCase" values={['Yes', 'No']} selected={submissionDetails.onTheSpotCloseCase} onChange={updateSubmissionDetail} required />
 
-            <TextField
-              label="ANP"
-              name="anp"
-              value={submissionDetails.anp}
-              onChange={updateSubmissionDetail}
-              pattern="[0-9]+(?:\.[0-9]{1,2})?"
-              title="Enter a number with no more than two decimal places"
-              inputMode="decimal"
-              maxLength="20"
-              placeholder="0.00"
-              required
-            />
+            {submissionDetails.onTheSpotCloseCase === 'Yes' && (
+              <div className="conditional-field">
+                <TextField
+                  label="ANP"
+                  name="anp"
+                  value={submissionDetails.anp}
+                  onChange={updateSubmissionDetail}
+                  pattern="[0-9]+(?:\.[0-9]{1,2})?"
+                  title="Enter a number with no more than two decimal places"
+                  inputMode="decimal"
+                  maxLength="20"
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+            )}
 
             {status.message && (
               <div ref={statusRef} className={`notice ${status.type}`} role="alert" aria-live="assertive" tabIndex="-1">

@@ -2,8 +2,7 @@ const MAX_BODY_BYTES = 20_000
 
 const BASE_REQUIRED_TEXT_FIELDS = [
   'date', 'roadshowLocation', 'roadshowState', 'fullName', 'mobileNumber', 'icLast4', 'agentName',
-  'agentId', 'gmName', 'ageBand', 'maritalStatus', 'employmentType',
-  'monthlyPersonalIncome',
+  'agentId', 'gmName',
 ]
 
 const BASE_FIELD_LIMITS = {
@@ -27,7 +26,6 @@ const OUTCOME_FIELD_LIMITS = {
   presentationDone: 3,
   potentialFollowUp: 3,
   onTheSpotCloseCase: 3,
-  anp: 20,
 }
 
 const ALLOWED_VALUES = {
@@ -74,7 +72,8 @@ function isValidDate(value) {
 }
 
 function cleanAllowedArray(value, allowedValues) {
-  if (!Array.isArray(value) || value.length === 0) return null
+  if (!Array.isArray(value)) return null
+  if (value.length === 0) return []
   const cleaned = value.map(cleanText)
   if (new Set(cleaned).size !== cleaned.length) return null
   return cleaned.every((item) => allowedValues.includes(item)) ? cleaned : null
@@ -160,13 +159,14 @@ export async function onRequest({ request, env }) {
       return json({ success: false, error: 'Invalid roadshow state' }, 400)
     }
 
-    if (!ALLOWED_VALUES.ageBand.includes(cleaned.ageBand)
-      || !ALLOWED_VALUES.maritalStatus.includes(cleaned.maritalStatus)
-      || !ALLOWED_VALUES.monthlyPersonalIncome.includes(cleaned.monthlyPersonalIncome)) {
+    if ((cleaned.ageBand && !ALLOWED_VALUES.ageBand.includes(cleaned.ageBand))
+      || (cleaned.maritalStatus && !ALLOWED_VALUES.maritalStatus.includes(cleaned.maritalStatus))
+      || (cleaned.monthlyPersonalIncome && !ALLOWED_VALUES.monthlyPersonalIncome.includes(cleaned.monthlyPersonalIncome))) {
       return json({ success: false, error: 'Invalid profile selection' }, 400)
     }
 
-    const isStandardEmployment = ALLOWED_VALUES.employmentType.includes(cleaned.employmentType)
+    const isStandardEmployment = !cleaned.employmentType
+      || ALLOWED_VALUES.employmentType.includes(cleaned.employmentType)
     const isSpecifiedOther = cleaned.employmentType.startsWith('Others: ')
       && cleaned.employmentType.slice(8).trim().length > 0
     if (!isStandardEmployment && !isSpecifiedOther) {
@@ -182,7 +182,7 @@ export async function onRequest({ request, env }) {
       ALLOWED_VALUES.financialPriorities,
     )
     if (!existingInsurancePlans || !financialPriorities) {
-      return json({ success: false, error: 'Invalid or missing checkbox selection' }, 400)
+      return json({ success: false, error: 'Invalid checkbox selection' }, 400)
     }
 
     payload = {
@@ -219,13 +219,18 @@ export async function onRequest({ request, env }) {
         return json({ success: false, error: `Field is too long: ${field}` }, 400)
       }
     }
+    cleaned.anp = cleanText(body.anp)
+    if (cleaned.anp.length > 20) {
+      return json({ success: false, error: 'Field is too long: anp' }, 400)
+    }
     if (![cleaned.presentationDone, cleaned.potentialFollowUp, cleaned.onTheSpotCloseCase]
       .every((value) => value === 'Yes' || value === 'No')) {
       return json({ success: false, error: 'Invalid Yes or No submission detail' }, 400)
     }
-    if (!/^\d+(?:\.\d{1,2})?$/.test(cleaned.anp)) {
+    if (cleaned.onTheSpotCloseCase === 'Yes' && !/^\d+(?:\.\d{1,2})?$/.test(cleaned.anp)) {
       return json({ success: false, error: 'ANP must be a number with no more than two decimal places' }, 400)
     }
+    if (cleaned.onTheSpotCloseCase === 'No') cleaned.anp = ''
 
     payload = {
       action,
