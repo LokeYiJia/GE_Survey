@@ -45,27 +45,35 @@ GOOGLE_SHEETS_WEBHOOK_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/
    6. IC Num (last 4 digits)
    7. Agent Name
    8. Agent ID
-   9. GM Name
-   10. Current Insurance Company
-   11. Age Band
-   12. Marital Status
-   13. Employment Type
-   14. Monthly Income
-   15. Existing Insurance Plan
-   16. Financial Priorities in the next 12 months
-   17. Presentation Done
-   18. Potential Follow Up
-   19. On the Spot Close Case
-   20. ANP
-   21. Submission Timestamp
-   22. Submission ID
+   9. Agent Email
+   10. GM Name
+   11. Current Insurance Company
+   12. Age Band
+   13. Marital Status
+   14. Employment Type
+   15. Monthly Income
+   16. Existing Insurance Plan
+   17. Financial Priorities in the next 12 months
+   18. Presentation Done
+   19. Potential Follow Up
+   20. On the Spot Close Case
+   21. ANP
+   22. Submission Timestamp
+   23. Submission ID
+   24. Email Sent Timestamp
 
 4. In the Sheet, select **Extensions → Apps Script**.
 5. Replace the editor contents with [`google-apps-script/Code.gs`](google-apps-script/Code.gs) and save.
 6. Select **Deploy → New deployment**, choose **Web app**, execute as yourself, and set access to **Anyone**.
 7. Authorize the script and copy the deployed Web App URL ending in `/exec`. Keep it private.
 
-The script verifies all 22 headers. The first submit appends the 16 lead fields, four blank outcome cells, a server-generated timestamp, and a unique submission ID. The popup submit uses that ID to update only the four outcome cells in the same row. It reads row 1 for validation but never writes to or changes it. The `Submission ID` column can be hidden in Google Sheets. If the script changes later, create a new deployment version from **Manage deployments**.
+The script verifies all 24 headers. The first submit appends the 17 lead fields, four blank outcome cells, a server-generated timestamp, a unique submission ID, and a blank email-sent timestamp. The popup submit uses that ID to update only the four outcome cells in the same row. It reads row 1 for validation but never writes to or changes it. The `Submission ID` and `Email Sent Timestamp` columns can be hidden in Google Sheets. If the script changes later, create a new deployment version from **Manage deployments**.
+
+## Send grouped agent reports
+
+After saving the Apps Script, reload the Google Sheet. An **Agent Reports** menu will appear next to **Extensions**. Select **Agent Reports → Send unsent agent reports** to send one consolidated table to each unique Agent Email. For example, three completed rows assigned to the same address are sent in one email, not three emails.
+
+Only completed popup submissions with a valid Agent Email and a blank `Email Sent Timestamp` are included. ANP is required for reporting only when `On the Spot Close Case` is `Yes`. After each agent's email succeeds, the included rows are stamped so they are not sent again. The first run will ask the Google account that owns the script to authorize email sending.
 
 ## Deploy to Cloudflare Pages
 

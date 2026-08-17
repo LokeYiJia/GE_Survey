@@ -2,7 +2,7 @@ const MAX_BODY_BYTES = 20_000
 
 const BASE_REQUIRED_TEXT_FIELDS = [
   'date', 'roadshowLocation', 'roadshowState', 'fullName', 'mobileNumber', 'icLast4', 'agentName',
-  'agentId', 'gmName',
+  'agentId', 'agentEmail', 'gmName',
 ]
 
 const BASE_FIELD_LIMITS = {
@@ -14,6 +14,7 @@ const BASE_FIELD_LIMITS = {
   icLast4: 4,
   agentName: 150,
   agentId: 80,
+  agentEmail: 254,
   gmName: 150,
   currentInsuranceCompany: 150,
   ageBand: 10,
@@ -153,6 +154,9 @@ export async function onRequest({ request, env }) {
     if (!/^\d{4}$/.test(cleaned.icLast4)) {
       return json({ success: false, error: 'IC last 4 must contain exactly 4 numbers' }, 400)
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleaned.agentEmail)) {
+      return json({ success: false, error: 'Invalid agent email address' }, 400)
+    }
     if (!isValidDate(cleaned.date)) return json({ success: false, error: 'Invalid date' }, 400)
 
     if (!ALLOWED_VALUES.roadshowState.includes(cleaned.roadshowState)) {
@@ -195,6 +199,7 @@ export async function onRequest({ request, env }) {
       icLast4: cleaned.icLast4,
       agentName: cleaned.agentName,
       agentId: cleaned.agentId,
+      agentEmail: cleaned.agentEmail,
       gmName: cleaned.gmName,
       currentInsuranceCompany: cleaned.currentInsuranceCompany,
       ageBand: cleaned.ageBand,

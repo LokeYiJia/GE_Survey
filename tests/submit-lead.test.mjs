@@ -18,6 +18,7 @@ const validBody = {
   icLast4: '1234',
   agentName: 'Test Agent',
   agentId: 'GE123',
+  agentEmail: 'agent@example.com',
   gmName: 'Test GM',
   currentInsuranceCompany: '',
   ageBand: '25-34',
@@ -82,6 +83,7 @@ test('creates a lead and returns its submission ID', async () => {
     'icLast4',
     'agentName',
     'agentId',
+    'agentEmail',
     'gmName',
     'currentInsuranceCompany',
     'ageBand',
@@ -92,6 +94,7 @@ test('creates a lead and returns its submission ID', async () => {
     'financialPriorities',
   ])
   assert.equal(forwardedPayload.action, 'create')
+  assert.equal(forwardedPayload.agentEmail, 'agent@example.com')
   assert.equal(forwardedPayload.roadshowLocation, 'Kuala Lumpur Convention Centre')
   assert.equal('consent' in forwardedPayload, false)
 })
@@ -187,6 +190,14 @@ test('rejects requests that are not JSON', async () => {
 test('rejects a roadshow state outside West Malaysia', async () => {
   const response = await onRequest({
     request: post({ ...validBody, roadshowState: 'Sabah' }),
+    env,
+  })
+  assert.equal(response.status, 400)
+})
+
+test('rejects an invalid agent email address', async () => {
+  const response = await onRequest({
+    request: post({ ...validBody, agentEmail: 'not-an-email' }),
     env,
   })
   assert.equal(response.status, 400)
