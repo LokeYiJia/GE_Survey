@@ -242,14 +242,7 @@ export default function App() {
     <main className="page-shell">
       <div className="survey-card">
         <header className="survey-header">
-          <img
-            className="brand-logo"
-            src="/assets/great-eastern-ocbc-logo-v2.png"
-            alt="Great Eastern — An OCBC Company"
-          />
-          <div>
-            <h1>SURVEY FORM</h1>
-          </div>
+          <h1>Great Eastern Survey Form</h1>
         </header>
 
         {status.message && !showSubmissionDetails && (
