@@ -33,7 +33,7 @@ button, input, select { font: inherit; }
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   min-height: 110px;
   padding: 28px 44px;
   overflow: hidden;
@@ -61,7 +61,7 @@ button, input, select { font: inherit; }
   font-size: clamp(36px, 5vw, 54px);
   line-height: 1;
   letter-spacing: .045em;
-  text-align: right;
+  text-align: center;
 }
 
 form { padding: 0 44px 38px; }
