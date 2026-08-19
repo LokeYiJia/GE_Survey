@@ -299,6 +299,13 @@ footer {
   text-align: center;
 }
 
+.prepared-by {
+  margin-top: 12px;
+  color: #ff0000;
+  font-weight: 700;
+  text-align: left;
+}
+
 @media (max-width: 700px) {
   .page-shell { padding: 0; background: #fff; }
   .survey-card { box-shadow: none; }

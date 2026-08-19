@@ -310,7 +310,10 @@ export default function App() {
             {submitting ? <><span className="spinner" aria-hidden="true" /> Submitting…</> : 'Submit Survey'}
           </button>
         </form>
-        <footer>Thank you for taking the time to complete this survey.</footer>
+        <footer>
+          <div className="footer-thanks">Thank you for taking the time to complete this survey.</div>
+          <div className="prepared-by">*Prepared by Center for Excellence</div>
+        </footer>
       </div>
 
       {showSubmissionDetails && (
