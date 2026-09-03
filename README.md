@@ -71,9 +71,9 @@ The script verifies all 24 headers. The first submit appends the 17 lead fields,
 
 ## Send grouped agent reports
 
-After saving the Apps Script, reload the Google Sheet. An **Agent Reports** menu will appear next to **Extensions**. Select **Agent Reports → Send unsent agent reports** to send one consolidated table to each unique Agent Email. For example, three completed rows assigned to the same address are sent in one email, not three emails.
+After saving the Apps Script, reload the Google Sheet. An **Agent Reports** menu will appear next to **Extensions**. Select **Agent Reports → Send unsent agent reports** to scan every compatible survey tab and send one consolidated email to each unique Agent Email. Leads for the same agent are combined even when they came from different tabs, with a separate table for each Roadshow Location. Every table includes a `Survey` column containing the source tab name.
 
-Only completed popup submissions with a valid Agent Email and a blank `Email Sent Timestamp` are included. ANP is required for reporting only when `On the Spot Close Case` is `Yes`. After each agent's email succeeds, the included rows are stamped so they are not sent again. The first run will ask the Google account that owns the script to authorize email sending.
+Compatible tabs must contain `Agent Email`, `Presentation Done`, `Potential Follow Up`, `On the Spot Close Case`, and `Email Sent Timestamp` headers; unrelated tabs are ignored. Column positions and header capitalization may differ between tabs. The report function does not require or validate ANP. Only completed popup submissions with a valid Agent Email and a blank `Email Sent Timestamp` are included. If a tab contains `3 month / 6 month PA?`, that answer must also be completed. After each agent's email succeeds, the included rows are stamped in their source tabs so they are not sent again. The first run will ask the Google account that owns the script to authorize email sending.
 
 ## Deploy to Cloudflare Pages
 

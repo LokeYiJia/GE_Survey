@@ -1,5 +1,5 @@
 const SHEET_NAME = 'Leads Gathering';
-const SCRIPT_BUILD = '2026-08-17-agent-reports-v1';
+const SCRIPT_BUILD = '2026-08-27-roadshow-grouped-agent-reports-v1';
 const EXPECTED_HEADERS = [
   'Date',
   'Roadshow Location',
@@ -148,46 +148,71 @@ function sendAgentReports() {
 
   try {
     lock.waitLock(30000);
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-    if (!sheet) throw new Error('Sheet tab not found: ' + SHEET_NAME);
-    verifyHeaders_(sheet);
-
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) {
-      ui.alert('Agent Reports', 'There are no submissions to send.', ui.ButtonSet.OK);
-      return;
-    }
-
-    const column = getColumnIndexes_();
-    const rows = sheet.getRange(2, 1, lastRow - 1, EXPECTED_HEADERS.length).getDisplayValues();
+    const sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
     const groups = {};
     let incompleteCount = 0;
     let invalidEmailCount = 0;
+    let compatibleTabCount = 0;
 
-    rows.forEach(function (values, index) {
-      const sheetRow = index + 2;
-      const closeCase = values[column['On the Spot Close Case']].trim();
-      const alreadySent = values[column['Email Sent Timestamp']].trim() !== '';
-      const completed = values[column['Presentation Done']].trim() !== ''
-        && values[column['Potential Follow Up']].trim() !== ''
-        && closeCase !== ''
-        && (closeCase === 'No' || values[column.ANP].trim() !== '');
+    sheets.forEach(function (sheet) {
+      const reportInfo = getReportInfo_(sheet);
+      if (!reportInfo) return;
+      compatibleTabCount++;
 
-      if (alreadySent) return;
-      if (!completed) {
-        incompleteCount++;
-        return;
-      }
+      const lastRow = sheet.getLastRow();
+      if (lastRow < 2) return;
 
-      const agentEmail = values[column['Agent Email']].trim().toLowerCase();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(agentEmail)) {
-        invalidEmailCount++;
-        return;
-      }
+      const rows = sheet
+        .getRange(2, 1, lastRow - 1, reportInfo.headers.length)
+        .getDisplayValues();
 
-      if (!groups[agentEmail]) groups[agentEmail] = [];
-      groups[agentEmail].push({ rowNumber: sheetRow, values: values });
+      rows.forEach(function (values, index) {
+        const closeCase = reportCell_(values, reportInfo.columns, 'On the Spot Close Case').trim();
+        const paDurationColumn = reportInfo.columns[normalizeHeader_('3 month / 6 month PA?')];
+        const paDurationComplete = paDurationColumn == null
+          || String(values[paDurationColumn] || '').trim() !== '';
+        const alreadySent = reportCell_(values, reportInfo.columns, 'Email Sent Timestamp').trim() !== '';
+        const completed = reportCell_(values, reportInfo.columns, 'Presentation Done').trim() !== ''
+          && reportCell_(values, reportInfo.columns, 'Potential Follow Up').trim() !== ''
+          && closeCase !== ''
+          && paDurationComplete;
+
+        if (alreadySent) return;
+        if (!completed) {
+          incompleteCount++;
+          return;
+        }
+
+        const agentEmail = reportCell_(values, reportInfo.columns, 'Agent Email')
+          .trim()
+          .toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(agentEmail)) {
+          invalidEmailCount++;
+          return;
+        }
+
+        if (!groups[agentEmail]) groups[agentEmail] = [];
+        groups[agentEmail].push({
+          sheet: sheet,
+          sheetName: sheet.getName(),
+          rowNumber: index + 2,
+          values: values,
+          headers: reportInfo.headers,
+          columns: reportInfo.columns,
+          roadshowLocation: reportCell_(values, reportInfo.columns, 'Roadshow Location').trim()
+            || 'Unspecified Roadshow',
+          sentTimestampColumn: reportInfo.columns[normalizeHeader_('Email Sent Timestamp')],
+        });
+      });
     });
+
+    if (compatibleTabCount === 0) {
+      throw new Error(
+        'No compatible survey tabs were found. A report tab must contain Agent Email, '
+          + 'Presentation Done, Potential Follow Up, On the Spot Close Case, '
+          + 'and Email Sent Timestamp headers.'
+      );
+    }
 
     const recipients = Object.keys(groups);
     if (recipients.length === 0) {
@@ -212,7 +237,7 @@ function sendAgentReports() {
     let totalLeads = 0;
     recipients.forEach(function (agentEmail) {
       const leads = groups[agentEmail];
-      const report = buildAgentReport_(agentEmail, leads, column);
+      const report = buildAgentReport_(agentEmail, leads);
       MailApp.sendEmail({
         to: agentEmail,
         subject: 'Great Eastern Lead Report - ' + leads.length
@@ -223,7 +248,7 @@ function sendAgentReports() {
       });
 
       leads.forEach(function (lead) {
-        sheet.getRange(lead.rowNumber, column['Email Sent Timestamp'] + 1)
+        lead.sheet.getRange(lead.rowNumber, lead.sentTimestampColumn + 1)
           .setValue(sentAt)
           .setNumberFormat('yyyy-mm-dd hh:mm:ss');
       });
@@ -234,6 +259,7 @@ function sendAgentReports() {
     ui.alert(
       'Agent Reports Sent',
       'Sent ' + recipients.length + ' agent email(s) containing ' + totalLeads + ' lead(s).'
+        + '\nScanned ' + compatibleTabCount + ' compatible survey tab(s).'
         + formatSkippedRows_(incompleteCount, invalidEmailCount),
       ui.ButtonSet.OK
     );
@@ -249,16 +275,21 @@ function sendAgentReports() {
   }
 }
 
-function buildAgentReport_(agentEmail, leads, column) {
+function buildAgentReport_(agentEmail, leads) {
   const generatedAt = Utilities.formatDate(
     new Date(),
     Session.getScriptTimeZone(),
     'yyyy-MM-dd HH:mm:ss'
   );
-  const reportHeaders = EXPECTED_HEADERS.filter(function (header) {
-    return header !== 'Agent Email'
-      && header !== 'Submission ID'
-      && header !== 'Email Sent Timestamp';
+  const excludedHeaders = [
+    normalizeHeader_('Agent Email'),
+    normalizeHeader_('Submission ID'),
+    normalizeHeader_('Email Sent Timestamp'),
+  ];
+  const roadshows = {};
+  leads.forEach(function (lead) {
+    if (!roadshows[lead.roadshowLocation]) roadshows[lead.roadshowLocation] = [];
+    roadshows[lead.roadshowLocation].push(lead);
   });
   const textLines = [
     'Hello,',
@@ -266,40 +297,101 @@ function buildAgentReport_(agentEmail, leads, column) {
     'Here are ' + leads.length + (leads.length === 1 ? ' lead' : ' leads')
       + ' assigned to ' + agentEmail + '.',
     '',
-    ['Lead'].concat(reportHeaders).join('\t'),
   ];
-  const headerCells = ['Lead'].concat(reportHeaders).map(function (label) {
-    return '<th style="padding:8px 10px;text-align:left;vertical-align:top;white-space:nowrap;'
-      + 'background:#102746;color:#ffffff;border:1px solid #d9dde3">'
-      + escapeHtml_(label) + '</th>';
-  }).join('');
-
-  const htmlRows = leads.map(function (lead, index) {
-    const rowValues = reportHeaders.map(function (header) {
-      return lead.values[column[header]];
+  const roadshowTables = Object.keys(roadshows).sort().map(function (roadshowLocation) {
+    const roadshowLeads = roadshows[roadshowLocation];
+    const seenHeaders = {};
+    const reportHeaders = [];
+    roadshowLeads.forEach(function (lead) {
+      lead.headers.forEach(function (header) {
+        const normalized = normalizeHeader_(header);
+        if (!normalized || excludedHeaders.indexOf(normalized) !== -1 || seenHeaders[normalized]) return;
+        seenHeaders[normalized] = true;
+        reportHeaders.push({ label: header, normalized: normalized });
+      });
     });
-    textLines.push([index + 1].concat(rowValues).map(plainTextCell_).join('\t'));
-    const cells = [index + 1].concat(rowValues).map(function (value) {
-      return '<td style="padding:8px 10px;text-align:left;vertical-align:top;'
-        + 'border:1px solid #d9dde3">' + escapeHtml_(value) + '</td>';
+
+    textLines.push('Roadshow: ' + roadshowLocation);
+    textLines.push(
+      ['Lead', 'Survey'].concat(reportHeaders.map(function (header) { return header.label; })).join('\t')
+    );
+    const headerLabels = ['Lead', 'Survey'].concat(reportHeaders.map(function (header) {
+      return header.label;
+    }));
+    const headerCells = headerLabels.map(function (label) {
+      return '<th style="padding:8px 10px;text-align:left;vertical-align:top;white-space:nowrap;'
+        + 'background:#102746;color:#ffffff;border:1px solid #d9dde3">'
+        + escapeHtml_(label) + '</th>';
     }).join('');
-    return '<tr style="background:' + (index % 2 === 0 ? '#ffffff' : '#f7f8fa') + '">'
-      + cells + '</tr>';
+
+    const htmlRows = roadshowLeads.map(function (lead, index) {
+      const rowValues = reportHeaders.map(function (header) {
+        const columnIndex = lead.columns[header.normalized];
+        return columnIndex == null ? '' : lead.values[columnIndex];
+      });
+      const displayedValues = [index + 1, lead.sheetName].concat(rowValues);
+      textLines.push(displayedValues.map(plainTextCell_).join('\t'));
+      const cells = displayedValues.map(function (value) {
+        return '<td style="padding:8px 10px;text-align:left;vertical-align:top;'
+          + 'border:1px solid #d9dde3">' + escapeHtml_(value) + '</td>';
+      }).join('');
+      return '<tr style="background:' + (index % 2 === 0 ? '#ffffff' : '#f7f8fa') + '">'
+        + cells + '</tr>';
+    }).join('');
+    textLines.push('');
+
+    return '<h3 style="margin:28px 0 10px;color:#102746">Roadshow: '
+      + escapeHtml_(roadshowLocation) + '</h3>'
+      + '<div style="width:100%;overflow-x:auto"><table style="border-collapse:collapse;min-width:1600px">'
+      + '<thead><tr>' + headerCells + '</tr></thead><tbody>' + htmlRows + '</tbody></table></div>';
   }).join('');
 
   textLines.push('', 'Report generated: ' + generatedAt);
-  const table = '<div style="width:100%;overflow-x:auto"><table style="border-collapse:collapse;min-width:1600px">'
-    + '<thead><tr>' + headerCells + '</tr></thead><tbody>' + htmlRows + '</tbody></table></div>';
 
   return {
     text: textLines.join('\n'),
     html: '<div style="font-family:Arial,Helvetica,sans-serif;color:#172033">'
       + '<p>Hello,</p><p>Here are <strong>' + leads.length
       + (leads.length === 1 ? ' lead' : ' leads') + '</strong> assigned to '
-      + escapeHtml_(agentEmail) + '.</p>' + table
+      + escapeHtml_(agentEmail) + '.</p>' + roadshowTables
       + '<p style="margin-top:24px;color:#5c667a">Report generated: '
       + escapeHtml_(generatedAt) + '</p></div>',
   };
+}
+
+function getReportInfo_(sheet) {
+  const lastColumn = sheet.getLastColumn();
+  if (lastColumn < 1) return null;
+
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getDisplayValues()[0].map(function (header) {
+    return String(header || '').trim();
+  });
+  const columns = headers.reduce(function (indexes, header, index) {
+    const normalized = normalizeHeader_(header);
+    if (normalized && indexes[normalized] == null) indexes[normalized] = index;
+    return indexes;
+  }, {});
+  const requiredHeaders = [
+    'Agent Email',
+    'Presentation Done',
+    'Potential Follow Up',
+    'On the Spot Close Case',
+    'Email Sent Timestamp',
+  ];
+  const compatible = requiredHeaders.every(function (header) {
+    return columns[normalizeHeader_(header)] != null;
+  });
+
+  return compatible ? { headers: headers, columns: columns } : null;
+}
+
+function reportCell_(values, columns, header) {
+  const index = columns[normalizeHeader_(header)];
+  return index == null ? '' : String(values[index] || '');
+}
+
+function normalizeHeader_(header) {
+  return String(header == null ? '' : header).trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 function verifyHeaders_(sheet) {
