@@ -1,6 +1,8 @@
-const SHEET_NAME = 'Leads Gathering';
-const SCRIPT_BUILD = '2026-08-27-roadshow-grouped-agent-reports-v1';
-const EXPECTED_HEADERS = [
+const LEADS_GATHERING_CONFIG = {
+  sheetName: 'GE Survey Form',
+  scriptBuild: '2026-08-27-roadshow-grouped-agent-reports-v1',
+  expectedHeaders:
+  [
   'Date',
   'Roadshow Location',
   'Roadshow State',
@@ -25,8 +27,8 @@ const EXPECTED_HEADERS = [
   'Submission Timestamp',
   'Submission ID',
   'Email Sent Timestamp',
-];
-const BASE_COLUMN_KEYS = [
+  ],
+  baseColumnKeys: [
   'date',
   'roadshowLocation',
   'roadshowState',
@@ -44,13 +46,14 @@ const BASE_COLUMN_KEYS = [
   'monthlyPersonalIncome',
   'existingInsurancePlans',
   'financialPriorities',
-];
-const OUTCOME_COLUMN_KEYS = [
+  ],
+  outcomeColumnKeys: [
   'presentationDone',
   'potentialFollowUp',
   'onTheSpotCloseCase',
   'anp',
-];
+  ]
+}
 
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -66,9 +69,9 @@ function doPost(e) {
     }
 
     const data = JSON.parse(e.postData.contents);
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(LEADS_GATHERING_CONFIG.sheetName);
     if (!sheet) {
-      throw new Error('Sheet tab not found: ' + SHEET_NAME);
+      throw new Error('Sheet tab not found: ' + LEADS_GATHERING_CONFIG.sheetName);
     }
 
     verifyHeaders_(sheet);
@@ -84,10 +87,10 @@ function doPost(e) {
     try {
       if (data.action === 'create') {
         // The four outcome cells start blank and are completed by the second request.
-        const baseRow = BASE_COLUMN_KEYS.map(function (key) {
+        const baseRow = LEADS_GATHERING_CONFIG.baseColumnKeys.map(function (key) {
           return safeCell(data[key]);
         });
-        const emptyOutcomes = OUTCOME_COLUMN_KEYS.map(function () { return ''; });
+        const emptyOutcomes = LEADS_GATHERING_CONFIG.outcomeColumnKeys.map(function () { return ''; });
         const submissionTimestamp = new Date();
         const submissionId = Utilities.getUuid();
 
@@ -121,7 +124,7 @@ function doPost(e) {
         if (!idCell) throw new Error('Submission not found');
 
         validateOutcomes(data);
-        const outcomeRow = OUTCOME_COLUMN_KEYS.map(function (key) {
+        const outcomeRow = LEADS_GATHERING_CONFIG.outcomeColumnKeys.map(function (key) {
           return safeCell(data[key]);
         });
         sheet.getRange(idCell.getRow(), 18, 1, outcomeRow.length).setValues([outcomeRow]);
@@ -137,7 +140,7 @@ function doPost(e) {
     const message = error && error.message ? String(error.message) : String(error);
     return jsonResponse({
       success: false,
-      error: '[' + SCRIPT_BUILD + '] ' + message,
+      error: '[' + LEADS_GATHERING_CONFIG.scriptBuild  + '] ' + message,
     });
   }
 }
@@ -395,8 +398,8 @@ function normalizeHeader_(header) {
 }
 
 function verifyHeaders_(sheet) {
-  const headers = sheet.getRange(1, 1, 1, EXPECTED_HEADERS.length).getDisplayValues()[0];
-  const mismatches = EXPECTED_HEADERS.reduce(function (results, expected, index) {
+  const headers = sheet.getRange(1, 1, 1, LEADS_GATHERING_CONFIG.expectedHeaders.length).getDisplayValues()[0];
+  const mismatches = LEADS_GATHERING_CONFIG.expectedHeaders.reduce(function (results, expected, index) {
     if (headers[index] !== expected) {
       results.push(
         'Column ' + (index + 1) + ': expected "' + expected
@@ -409,7 +412,7 @@ function verifyHeaders_(sheet) {
 }
 
 function getColumnIndexes_() {
-  return EXPECTED_HEADERS.reduce(function (indexes, header, index) {
+  return LEADS_GATHERING_CONFIG.expectedHeaders.reduce(function (indexes, header, index) {
     indexes[header] = index;
     return indexes;
   }, {});
