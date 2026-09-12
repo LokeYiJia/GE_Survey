@@ -16,6 +16,7 @@ const initialSubmissionDetails = {
 }
 
 const options = {
+  roadshowLocation: ['Lotus E-Gate', 'Food Bayana'],
   roadshowState: [
     'Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang',
     'Pulau Pinang', 'Perak', 'Perlis', 'Selangor', 'Terengganu',
@@ -49,7 +50,7 @@ function SelectField({ label, name, value, values, onChange, required }) {
     <label className="field">
       <span>{label}{required && <b aria-hidden="true"> *</b>}</span>
       <select name={name} value={value} onChange={onChange} required={required} autoComplete="off">
-        <option value="" disabled>Select a state</option>
+        <option value="" disabled>Select {label.toLowerCase()}</option>
         {values.map((option) => <option value={option} key={option}>{option}</option>)}
       </select>
     </label>
@@ -295,7 +296,7 @@ export default function App() {
           <Section number="04" title="For Agent Use">
             <div className="grid two-col">
               <TextField label="Date" name="date" type="date" value={form.date} onChange={update} required />
-              <TextField label="Roadshow Location (e.g. Lotus Kepong)" name="roadshowLocation" value={form.roadshowLocation} onChange={update} maxLength="150" placeholder="Enter roadshow location" required />
+              <SelectField label="Roadshow Location" name="roadshowLocation" value={form.roadshowLocation} values={options.roadshowLocation} onChange={update} required />
               <div className="grid-full-width">
                 <SelectField label="Roadshow State" name="roadshowState" value={form.roadshowState} values={options.roadshowState} onChange={update} required />
               </div>

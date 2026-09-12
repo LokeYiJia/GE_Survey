@@ -71,9 +71,17 @@ The script verifies all 24 headers. The first submit appends the 17 lead fields,
 
 ## Send grouped agent reports
 
-After saving the Apps Script, reload the Google Sheet. An **Agent Reports** menu will appear next to **Extensions**. Select **Agent Reports → Send unsent agent reports** to scan every compatible survey tab and send one consolidated email to each unique Agent Email. Leads for the same agent are combined even when they came from different tabs, with a separate table for each Roadshow Location. Every table includes a `Survey` column containing the source tab name.
+After saving the Apps Script, reload the Google Sheet. An **Agent Reports** menu will appear next to **Extensions**. Select **Install/reinstall daily midnight sending** once to create the daily time-driven trigger at approximately 12:00 AM in the `Asia/Kuala_Lumpur` timezone. Apps Script trigger times are approximate rather than exact. The **Send unsent agent reports now** menu item remains available as a manual fallback.
 
-Compatible tabs must contain `Agent Email`, `Presentation Done`, `Potential Follow Up`, `On the Spot Close Case`, and `Email Sent Timestamp` headers; unrelated tabs are ignored. Column positions and header capitalization may differ between tabs. The report function does not require or validate ANP. Only completed popup submissions with a valid Agent Email and a blank `Email Sent Timestamp` are included. If a tab contains `3 month / 6 month PA?`, that answer must also be completed. After each agent's email succeeds, the included rows are stamped in their source tabs so they are not sent again. The first run will ask the Google account that owns the script to authorize email sending.
+Both automatic and manual sending scan every compatible survey tab and send one consolidated email to each unique Agent Email. Leads for the same agent are combined even when they came from different tabs, with a separate table for each Roadshow Location. Every table includes a `Survey` column containing the source tab name.
+
+Compatible tabs must contain `Agent Email`, `Presentation Done`, `Potential Follow Up`, `On the Spot Close Case`, and `Email Sent Timestamp` headers; unrelated tabs are ignored. Column positions and header capitalization may differ between tabs. The report function does not require or validate ANP. Only completed popup submissions with a valid Agent Email and a blank `Email Sent Timestamp` are included. If a tab contains `3 month / 6 month PA?`, that answer must also be completed. After each agent's email succeeds, the included rows are stamped in their source tabs so they are not sent again. Automatic failures are recorded in Apps Script **Executions**; the manual fallback sends only the rows still left unstamped. The first run will ask the Google account that owns the script to authorize email sending.
+
+### Whapi delivery confirmation
+
+To send a WhatsApp confirmation after agent reports are delivered, add `WHAPI_TOKEN` and `WHAPI_CHAT_ID` under **Apps Script → Project Settings → Script Properties**. `WHAPI_CHAT_ID` may be a private chat ID or WhatsApp group ID supported by Whapi. Never place either value in frontend code or commit it to the repository.
+
+After each successful agent email, the script automatically creates or appends to an `Agent Report Log` tab. The log records the roadshow date, location, agent, lead count, email-sent time, and WhatsApp-sent time. Pending log entries are grouped into one Whapi message such as `Emails for Gleneagles Hospital on 4/9/2026 have been sent`. If Whapi fails, agent emails remain stamped and are not resent; select **Agent Reports → Retry pending WhatsApp updates now** to retry only the notification.
 
 ## Deploy to Cloudflare Pages
 

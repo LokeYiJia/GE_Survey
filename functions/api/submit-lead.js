@@ -30,6 +30,7 @@ const OUTCOME_FIELD_LIMITS = {
 }
 
 const ALLOWED_VALUES = {
+  roadshowLocation: ['Lotus E-Gate', 'Food Bayana'],
   roadshowState: [
     'Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang',
     'Pulau Pinang', 'Perak', 'Perlis', 'Selangor', 'Terengganu',
@@ -158,6 +159,10 @@ export async function onRequest({ request, env }) {
       return json({ success: false, error: 'Invalid agent email address' }, 400)
     }
     if (!isValidDate(cleaned.date)) return json({ success: false, error: 'Invalid date' }, 400)
+
+    if (!ALLOWED_VALUES.roadshowLocation.includes(cleaned.roadshowLocation)) {
+      return json({ success: false, error: 'Invalid roadshow location' }, 400)
+    }
 
     if (!ALLOWED_VALUES.roadshowState.includes(cleaned.roadshowState)) {
       return json({ success: false, error: 'Invalid roadshow state' }, 400)

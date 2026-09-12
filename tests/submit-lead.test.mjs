@@ -11,7 +11,7 @@ const submissionId = '123e4567-e89b-12d3-a456-426614174000'
 const validBody = {
   action: 'create',
   date: '2026-07-14',
-  roadshowLocation: '  Kuala Lumpur Convention Centre  ',
+  roadshowLocation: '  Lotus E-Gate  ',
   roadshowState: 'Kuala Lumpur',
   fullName: 'Test Person',
   mobileNumber: '+60 12 345 6789',
@@ -95,7 +95,7 @@ test('creates a lead and returns its submission ID', async () => {
   ])
   assert.equal(forwardedPayload.action, 'create')
   assert.equal(forwardedPayload.agentEmail, 'agent@example.com')
-  assert.equal(forwardedPayload.roadshowLocation, 'Kuala Lumpur Convention Centre')
+  assert.equal(forwardedPayload.roadshowLocation, 'Lotus E-Gate')
   assert.equal('consent' in forwardedPayload, false)
 })
 
@@ -193,6 +193,30 @@ test('rejects a roadshow state outside West Malaysia', async () => {
     env,
   })
   assert.equal(response.status, 400)
+})
+
+test('accepts Food Bayana as a roadshow location', async () => {
+  let forwardedPayload
+  globalThis.fetch = async (_url, options) => {
+    forwardedPayload = JSON.parse(options.body)
+    return Response.json({ success: true, submissionId })
+  }
+
+  const response = await onRequest({
+    request: post({ ...validBody, roadshowLocation: 'Food Bayana' }),
+    env,
+  })
+  assert.equal(response.status, 200)
+  assert.equal(forwardedPayload.roadshowLocation, 'Food Bayana')
+})
+
+test('rejects a roadshow location outside the dropdown', async () => {
+  const response = await onRequest({
+    request: post({ ...validBody, roadshowLocation: 'Other Roadshow' }),
+    env,
+  })
+  assert.equal(response.status, 400)
+  assert.equal((await response.json()).error, 'Invalid roadshow location')
 })
 
 test('rejects an invalid agent email address', async () => {
