@@ -16,7 +16,7 @@ const initialSubmissionDetails = {
 }
 
 const options = {
-  roadshowLocation: ['Lotus E-Gate', 'Food Bayana'],
+  roadshowLocation: ['Lotus E-Gate', 'Food Bayana', 'My Sihat'],
   roadshowState: [
     'Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang',
     'Pulau Pinang', 'Perak', 'Perlis', 'Selangor', 'Terengganu',

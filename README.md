@@ -83,6 +83,14 @@ To send a WhatsApp confirmation after agent reports are delivered, add `WHAPI_TO
 
 After each successful agent email, the script automatically creates or appends to an `Agent Report Log` tab. The log records the roadshow date, location, agent, lead count, email-sent time, and WhatsApp-sent time. Pending log entries are grouped into one Whapi message such as `Emails for Gleneagles Hospital on 4/9/2026 have been sent`. If Whapi fails, agent emails remain stamped and are not resent; select **Agent Reports → Retry pending WhatsApp updates now** to retry only the notification.
 
+### Two-hour roadshow lead-count updates
+
+[`google-apps-script/RoadshowWhatsAppUpdater.gs`](google-apps-script/RoadshowWhatsAppUpdater.gs) is a **separate Apps Script project** for the WhatsApp lead-count message. Replace the existing standalone two-hour updater with this file; do not paste it alongside the survey web-app `Code.gs`, which already has its own Whapi email-delivery confirmation. It reads the `GE Survey Form` and `Hospital Survey` tabs in the Leads Gathering spreadsheet and uses the `Master Roadshow Listing` tab (`Roadshow Venue`, `Start Date`, `End Date`) as its date authority. Enter a separate schedule row for each run of a repeated venue. Undated rows are ignored.
+
+The message keeps all-time `Total leads` and the previous `New since last update` count-difference behavior. `Roadshow Status` shows up to four current/recent or nearest upcoming runs. `By Roadshow Location` shows both the total and the increase since the last successful update for each ongoing run or one that ended within the last three calendar days. It counts only leads dated within that run; a previous run at the same venue is not mixed into a newer run. The per-location increase uses the same existing per-survey row baselines as the general increase, so it needs no extra Script Properties. The updater stays silent when there are no new leads, unless `SKIP_IF_NO_NEW_LEADS` is changed to `false`.
+
+In the standalone Apps Script project's **Project Settings → Script Properties**, set `WHAPI_TOKEN` and `WHAPI_CHAT_ID` (the WhatsApp group ID). Rotate the old token if it was pasted or shared. Save the replacement script, run `sendRoadshowUpdate` once to authorize and test it, then run `createTwoHourTrigger` once. The installer replaces only the updater's own trigger; the existing `lastCount_GE Survey Form` and `lastCount_Hospital Survey` Script Properties are retained, so the next message reports only leads added since its last successful send. A failed Whapi request leaves those counts unchanged for the next run.
+
 ## Deploy to Cloudflare Pages
 
 1. Push this project to a Git provider and create a Cloudflare Pages project for the repository.

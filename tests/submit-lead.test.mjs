@@ -210,6 +210,22 @@ test('accepts Food Bayana as a roadshow location', async () => {
   assert.equal(forwardedPayload.roadshowLocation, 'Food Bayana')
 })
 
+test('accepts My Sihat as a roadshow location', async () => {
+  let forwardedPayload
+  globalThis.fetch = async (_url, options) => {
+    forwardedPayload = JSON.parse(options.body)
+    return Response.json({ success: true, submissionId })
+  }
+
+  const response = await onRequest({
+    request: post({ ...validBody, roadshowLocation: 'My Sihat' }),
+    env,
+  })
+
+  assert.equal(response.status, 200)
+  assert.equal(forwardedPayload.roadshowLocation, 'My Sihat')
+})
+
 test('rejects a roadshow location outside the dropdown', async () => {
   const response = await onRequest({
     request: post({ ...validBody, roadshowLocation: 'Other Roadshow' }),
