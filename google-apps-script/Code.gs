@@ -1,6 +1,13 @@
 const LEADS_GATHERING_CONFIG = {
+  spreadsheetId: '1PWhuDutSTs1Bg2lirVozX75ToFkvvnQBhF0Lmethncw',
   sheetName: 'GE Survey Form',
-  scriptBuild: '2026-09-04-whapi-report-status-v3',
+  reportSheetNames: [
+    'Rapid Survey Form',
+    'GE Survey Form',
+    'Baby Fair Survey',
+    'Hospital Survey',
+  ],
+  scriptBuild: '2026-10-12-configured-email-reports-v2',
   expectedHeaders:
   [
   'Date',
@@ -55,19 +62,9 @@ const LEADS_GATHERING_CONFIG = {
   ]
 };
 
-const AGENT_REPORT_LOG_CONFIG = {
-  sheetName: 'Agent Report Log',
-  headers: [
-    'Email Sent At',
-    'Roadshow Date',
-    'Roadshow Location',
-    'Agent Email',
-    'Lead Count',
-    'WhatsApp Sent At',
-  ],
-};
-
-const WHAPI_ENDPOINT = 'https://gate.whapi.cloud/messages/text';
+function getLeadsGatheringSpreadsheet_() {
+  return SpreadsheetApp.openById(LEADS_GATHERING_CONFIG.spreadsheetId);
+}
 
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -75,7 +72,6 @@ function onOpen() {
     .addItem('Send unsent agent reports now', 'sendAgentReports')
     .addSeparator()
     .addItem('Install/reinstall daily midnight sending', 'installDailyAgentReportTrigger')
-    .addItem('Retry pending WhatsApp updates now', 'sendPendingWhapiUpdatesNow')
     .addToUi();
 }
 
@@ -86,7 +82,7 @@ function doPost(e) {
     }
 
     const data = JSON.parse(e.postData.contents);
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(LEADS_GATHERING_CONFIG.sheetName);
+    const sheet = getLeadsGatheringSpreadsheet_().getSheetByName(LEADS_GATHERING_CONFIG.sheetName);
     if (!sheet) {
       throw new Error('Sheet tab not found: ' + LEADS_GATHERING_CONFIG.sheetName);
     }
@@ -178,7 +174,12 @@ function runAgentReports_(silent) {
 
   try {
     lock.waitLock(30000);
-    const sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
+    const spreadsheet = getLeadsGatheringSpreadsheet_();
+    const sheets = LEADS_GATHERING_CONFIG.reportSheetNames.map(function (sheetName) {
+      const sheet = spreadsheet.getSheetByName(sheetName);
+      if (!sheet) throw new Error('Configured report tab not found: ' + sheetName);
+      return sheet;
+    });
     const groups = {};
     let incompleteCount = 0;
     let invalidEmailCount = 0;
@@ -186,7 +187,12 @@ function runAgentReports_(silent) {
 
     sheets.forEach(function (sheet) {
       const reportInfo = getReportInfo_(sheet);
-      if (!reportInfo) return;
+      if (!reportInfo) {
+        throw new Error(
+          'Configured report tab "' + sheet.getName()
+            + '" is missing one or more required agent-report headers.'
+        );
+      }
       compatibleTabCount++;
 
       const lastRow = sheet.getLastRow();
@@ -246,13 +252,11 @@ function runAgentReports_(silent) {
 
     const recipients = Object.keys(groups);
     if (recipients.length === 0) {
-      const whapiStatus = sendPendingWhapiUpdates_();
       showAgentReportMessage_(
         ui,
         'Agent Reports',
         'No completed, unsent submissions were found.'
           + formatSkippedRows_(incompleteCount, invalidEmailCount)
-          + '\n\n' + whapiStatus.message
       );
       return;
     }
@@ -284,22 +288,17 @@ function runAgentReports_(silent) {
           .setValue(sentAt)
           .setNumberFormat('yyyy-mm-dd hh:mm:ss');
       });
-      // Persist the sent stamps before creating the notification log. This
-      // ensures a later Whapi failure cannot cause agent emails to be resent.
       SpreadsheetApp.flush();
-      appendAgentReportLog_(agentEmail, leads, sentAt);
       totalLeads += leads.length;
     });
 
     SpreadsheetApp.flush();
-    const whapiStatus = sendPendingWhapiUpdates_();
     showAgentReportMessage_(
       ui,
       'Agent Reports Sent',
       'Sent ' + recipients.length + ' agent email(s) containing ' + totalLeads + ' lead(s).'
         + '\nScanned ' + compatibleTabCount + ' compatible survey tab(s).'
         + formatSkippedRows_(incompleteCount, invalidEmailCount)
-        + '\n\n' + whapiStatus.message
     );
   } catch (error) {
     console.error(error && error.stack ? error.stack : error);
@@ -346,201 +345,6 @@ function installDailyAgentReportTrigger() {
     'Automatic sending is scheduled for approximately 12:00 AM daily (Malaysia time).',
     ui.ButtonSet.OK
   );
-}
-
-function sendPendingWhapiUpdatesNow() {
-  const ui = SpreadsheetApp.getUi();
-  const lock = LockService.getScriptLock();
-
-  try {
-    lock.waitLock(30000);
-    const result = sendPendingWhapiUpdates_();
-    ui.alert('WhatsApp Report Status', result.message, ui.ButtonSet.OK);
-  } catch (error) {
-    console.error(error && error.stack ? error.stack : error);
-    ui.alert(
-      'WhatsApp Report Status Failed',
-      error && error.message ? error.message : 'Unable to send the WhatsApp update.',
-      ui.ButtonSet.OK
-    );
-  } finally {
-    if (lock.hasLock()) lock.releaseLock();
-  }
-}
-
-function appendAgentReportLog_(agentEmail, leads, sentAt) {
-  const grouped = {};
-  leads.forEach(function (lead) {
-    const roadshowDate = formatRoadshowDate_(
-      reportCell_(lead.values, lead.columns, 'Date').trim()
-    );
-    const location = lead.roadshowLocation || 'Unspecified Roadshow';
-    const key = JSON.stringify([roadshowDate, location]);
-
-    if (!grouped[key]) {
-      grouped[key] = {
-        roadshowDate: roadshowDate,
-        location: location,
-        leadCount: 0,
-      };
-    }
-    grouped[key].leadCount++;
-  });
-
-  const rows = Object.keys(grouped).map(function (key) {
-    const item = grouped[key];
-    return [
-      sentAt,
-      item.roadshowDate,
-      item.location,
-      agentEmail,
-      item.leadCount,
-      '',
-    ];
-  });
-  if (!rows.length) return;
-
-  const logSheet = getAgentReportLogSheet_(true);
-  const startRow = logSheet.getLastRow() + 1;
-  logSheet.getRange(startRow, 1, rows.length, AGENT_REPORT_LOG_CONFIG.headers.length)
-    .setValues(rows);
-  logSheet.getRange(startRow, 1, rows.length, 1)
-    .setNumberFormat('yyyy-mm-dd hh:mm:ss');
-}
-
-function sendPendingWhapiUpdates_() {
-  const properties = PropertiesService.getScriptProperties();
-  const token = String(properties.getProperty('WHAPI_TOKEN') || '').trim();
-  const chatId = String(properties.getProperty('WHAPI_CHAT_ID') || '').trim();
-
-  if (!token || !chatId) {
-    return {
-      sent: false,
-      message: 'WhatsApp update not sent: configure WHAPI_TOKEN and WHAPI_CHAT_ID in Script Properties.',
-    };
-  }
-
-  const logSheet = getAgentReportLogSheet_(false);
-  if (!logSheet || logSheet.getLastRow() < 2) {
-    return { sent: false, message: 'There are no pending WhatsApp report updates.' };
-  }
-
-  const rowCount = logSheet.getLastRow() - 1;
-  const rows = logSheet
-    .getRange(2, 1, rowCount, AGENT_REPORT_LOG_CONFIG.headers.length)
-    .getDisplayValues();
-  const pendingRows = [];
-  const summaries = {};
-
-  rows.forEach(function (values, index) {
-    if (String(values[5] || '').trim() !== '') return;
-
-    const roadshowDate = String(values[1] || '').trim() || 'Unspecified date';
-    const location = String(values[2] || '').trim() || 'Unspecified Roadshow';
-    const agentEmail = String(values[3] || '').trim().toLowerCase();
-    const leadCount = Number(values[4]) || 0;
-    const key = JSON.stringify([roadshowDate, location]);
-
-    if (!summaries[key]) {
-      summaries[key] = {
-        roadshowDate: roadshowDate,
-        location: location,
-        leadCount: 0,
-        agents: {},
-      };
-    }
-    summaries[key].leadCount += leadCount;
-    if (agentEmail) summaries[key].agents[agentEmail] = true;
-    pendingRows.push(index + 2);
-  });
-
-  if (!pendingRows.length) {
-    return { sent: false, message: 'There are no pending WhatsApp report updates.' };
-  }
-
-  const messageLines = ['✅ Agent email reports sent', ''];
-  Object.keys(summaries).sort().forEach(function (key) {
-    const summary = summaries[key];
-    const agentCount = Object.keys(summary.agents).length;
-    messageLines.push(
-      'Emails for ' + summary.location + ' on ' + summary.roadshowDate
-        + ' have been sent (' + summary.leadCount
-        + (summary.leadCount === 1 ? ' lead' : ' leads') + ', '
-        + agentCount + (agentCount === 1 ? ' agent' : ' agents') + ').'
-    );
-  });
-
-  const response = UrlFetchApp.fetch(WHAPI_ENDPOINT, {
-    method: 'post',
-    contentType: 'application/json',
-    headers: {
-      accept: 'application/json',
-      authorization: 'Bearer ' + token,
-    },
-    payload: JSON.stringify({
-      to: chatId,
-      body: messageLines.join('\n'),
-    }),
-    muteHttpExceptions: true,
-  });
-  const statusCode = response.getResponseCode();
-  if (statusCode < 200 || statusCode >= 300) {
-    throw new Error(
-      'Whapi returned HTTP ' + statusCode + ': '
-        + String(response.getContentText() || '').slice(0, 500)
-    );
-  }
-
-  const sentAt = new Date();
-  pendingRows.forEach(function (rowNumber) {
-    logSheet.getRange(rowNumber, 6)
-      .setValue(sentAt)
-      .setNumberFormat('yyyy-mm-dd hh:mm:ss');
-  });
-  SpreadsheetApp.flush();
-
-  return {
-    sent: true,
-    message: 'WhatsApp confirmation sent for ' + Object.keys(summaries).length
-      + ' roadshow/date group(s).',
-  };
-}
-
-function getAgentReportLogSheet_(createIfMissing) {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = spreadsheet.getSheetByName(AGENT_REPORT_LOG_CONFIG.sheetName);
-
-  if (!sheet && !createIfMissing) return null;
-  if (!sheet) {
-    sheet = spreadsheet.insertSheet(AGENT_REPORT_LOG_CONFIG.sheetName);
-    sheet.getRange(1, 1, 1, AGENT_REPORT_LOG_CONFIG.headers.length)
-      .setValues([AGENT_REPORT_LOG_CONFIG.headers]);
-    sheet.setFrozenRows(1);
-    return sheet;
-  }
-
-  const headers = sheet
-    .getRange(1, 1, 1, AGENT_REPORT_LOG_CONFIG.headers.length)
-    .getDisplayValues()[0];
-  const mismatches = AGENT_REPORT_LOG_CONFIG.headers.filter(function (header, index) {
-    return headers[index] !== header;
-  });
-  if (mismatches.length) {
-    throw new Error(
-      'The ' + AGENT_REPORT_LOG_CONFIG.sheetName
-        + ' headers do not match the required log format.'
-    );
-  }
-  return sheet;
-}
-
-function formatRoadshowDate_(value) {
-  const text = String(value || '').trim();
-  const isoDate = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(text);
-  if (isoDate) {
-    return Number(isoDate[3]) + '/' + Number(isoDate[2]) + '/' + isoDate[1];
-  }
-  return text || 'Unspecified date';
 }
 
 function buildAgentReport_(agentEmail, leads) {
