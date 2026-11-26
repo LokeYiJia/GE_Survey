@@ -303,7 +303,7 @@ export default function App() {
               <TextField label="Agent Name" name="agentName" value={form.agentName} onChange={update} maxLength="150" required />
               <TextField label="Agent ID" name="agentId" value={form.agentId} onChange={update} maxLength="80" required />
               <TextField label="Agent Email" name="agentEmail" type="email" value={form.agentEmail} onChange={update} maxLength="254" inputMode="email" required />
-              <TextField label="GM Name" name="gmName" value={form.gmName} onChange={update} maxLength="150" required />
+              <TextField label="GM Name" name="gmName" value={form.gmName} onChange={update} maxLength="150"/>
             </div>
           </Section>
 
