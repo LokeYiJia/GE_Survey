@@ -136,6 +136,32 @@ function upstreamSummary(response) {
   return `HTTP ${response.status}, content-type ${response.headers.get('content-type') || 'unknown'}, host ${finalHost}`
 }
 
+function parseUpstreamJson(responseText) {
+  const normalized = String(responseText || '')
+    .replace(/^\uFEFF/, '')
+    .replace(/^\)\]\}',?\s*/, '')
+    .trim()
+  try {
+    return { parsed: true, value: JSON.parse(normalized), normalized }
+  } catch {
+    return { parsed: false, value: null, normalized }
+  }
+}
+
+function responseBodySummary(parsedResult) {
+  if (parsedResult.parsed) {
+    const value = parsedResult.value
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return `JSON object with keys: ${Object.keys(value).slice(0, 12).join(', ') || '(none)'}`
+    }
+    return `JSON value of type ${Array.isArray(value) ? 'array' : typeof value}`
+  }
+
+  const preview = parsedResult.normalized.slice(0, 120)
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+  return `body length ${parsedResult.normalized.length}, starts with ${JSON.stringify(preview)}`
+}
+
 async function destinationHealth(url) {
   try {
     const response = await fetchGoogleAppsScript(url, {
@@ -143,12 +169,8 @@ async function destinationHealth(url) {
       headers: { Accept: 'application/json' },
     })
     const responseText = await response.text()
-    let result = null
-    try {
-      result = JSON.parse(responseText)
-    } catch {
-      // The diagnostic below intentionally does not expose Google's HTML.
-    }
+    const parsedResult = parseUpstreamJson(responseText)
+    const result = parsedResult.value
 
     if (response.ok && result?.success === true && result?.service) {
       return json({
@@ -164,7 +186,7 @@ async function destinationHealth(url) {
     return json({
       success: false,
       error: 'Apps Script health check failed',
-      details: upstreamSummary(response),
+      details: `${upstreamSummary(response)}; ${responseBodySummary(parsedResult)}`,
     }, 502)
   } catch (error) {
     return json({
@@ -351,16 +373,12 @@ export async function onRequest({ request, env }) {
     }
 
     const responseText = await webhookResponse.text()
-    let result = null
-    try {
-      result = JSON.parse(responseText)
-    } catch {
-      // Do not expose HTML returned by a login or deployment error page.
-    }
+    const parsedResult = parseUpstreamJson(responseText)
+    const result = parsedResult.value
     if (!result || result.success !== true) {
       const details = typeof result?.error === 'string'
         ? result.error.slice(0, 500)
-        : `Google Apps Script returned a non-JSON response (${upstreamSummary(webhookResponse)})`
+        : `Google Apps Script returned an unexpected response (${upstreamSummary(webhookResponse)}; ${responseBodySummary(parsedResult)})`
       console.error('Google Apps Script reported an error:', details)
       return json({
         success: false,

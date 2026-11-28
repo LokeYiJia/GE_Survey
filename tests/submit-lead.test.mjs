@@ -84,6 +84,18 @@ test('health check identifies the Apps Script deployment', async () => {
   })
 })
 
+test('accepts an Apps Script JSON response with a byte-order mark', async () => {
+  globalThis.fetch = async () => new Response(
+    `\uFEFF${JSON.stringify({ success: true, submissionId })}`,
+    { headers: { 'Content-Type': 'application/json' } },
+  )
+
+  const response = await onRequest({ request: post(), env })
+
+  assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), { success: true, submissionId })
+})
+
 test('creates a lead and returns its submission ID', async () => {
   let forwardedUrl
   let forwardedPayload
