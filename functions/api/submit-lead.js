@@ -30,7 +30,12 @@ const OUTCOME_FIELD_LIMITS = {
 }
 
 const ALLOWED_VALUES = {
-  roadshowLocation: ['Lotus E-Gate', 'Food Bayana', 'My Sihat', 'Deepavali Carnival KL', 'Deepavali Carnival Penang'],
+  roadshowLocation: [
+    'BP Expo',
+    'Live Expo',
+    'Lotus E-Gate',
+    'Food Bayana',
+  ],
   roadshowState: [
     'Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang',
     'Pulau Pinang', 'Perak', 'Perlis', 'Selangor', 'Terengganu',

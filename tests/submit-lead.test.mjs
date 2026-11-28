@@ -210,6 +210,24 @@ test('accepts Food Bayana as a roadshow location', async () => {
   assert.equal(forwardedPayload.roadshowLocation, 'Food Bayana')
 })
 
+for (const roadshowLocation of ['BP Expo', 'Live Expo']) {
+  test(`accepts ${roadshowLocation} as a roadshow location`, async () => {
+    let forwardedPayload
+    globalThis.fetch = async (_url, options) => {
+      forwardedPayload = JSON.parse(options.body)
+      return Response.json({ success: true, submissionId })
+    }
+
+    const response = await onRequest({
+      request: post({ ...validBody, roadshowLocation }),
+      env,
+    })
+
+    assert.equal(response.status, 200)
+    assert.equal(forwardedPayload.roadshowLocation, roadshowLocation)
+  })
+}
+
 test('accepts My Sihat as a roadshow location', async () => {
   let forwardedPayload
   globalThis.fetch = async (_url, options) => {
