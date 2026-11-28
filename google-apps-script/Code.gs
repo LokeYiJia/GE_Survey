@@ -75,6 +75,17 @@ function onOpen() {
     .addToUi();
 }
 
+// Identifies this deployment when its /exec URL is opened in a browser.
+// It contains no submission data or secrets.
+function doGet() {
+  return jsonResponse({
+    success: true,
+    service: 'GE Survey Lead Submission',
+    build: LEADS_GATHERING_CONFIG.scriptBuild,
+    destinationSheet: LEADS_GATHERING_CONFIG.sheetName,
+  });
+}
+
 function doPost(e) {
   try {
     if (!e || !e.postData || !e.postData.contents) {
