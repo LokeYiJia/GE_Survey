@@ -1,13 +1,13 @@
 const LEADS_GATHERING_CONFIG = {
   spreadsheetId: '1PWhuDutSTs1Bg2lirVozX75ToFkvvnQBhF0Lmethncw',
-  sheetName: 'GE Survey Form',
+  sheetName: 'GE General Form',
   reportSheetNames: [
-    'Rapid Survey Form',
-    'GE Survey Form',
+    'GDG Form',
+    'GE General Form',
     'Baby Fair Survey',
     'Hospital Survey',
   ],
-  scriptBuild: '2026-10-12-configured-email-reports-v2',
+  scriptBuild: '2026-11-28-current-sheet-names-v3',
   expectedHeaders:
   [
   'Date',

@@ -271,11 +271,17 @@ export async function onRequest({ request, env }) {
       return json({ success: false, error: 'Data destination rejected the submission' }, 502)
     }
 
-    const result = await webhookResponse.json().catch(() => null)
+    const responseText = await webhookResponse.text()
+    let result = null
+    try {
+      result = JSON.parse(responseText)
+    } catch {
+      // Do not expose HTML returned by a login or deployment error page.
+    }
     if (!result || result.success !== true) {
       const details = typeof result?.error === 'string'
         ? result.error.slice(0, 500)
-        : 'Google Apps Script returned an unexpected response'
+        : 'Google Apps Script returned a non-JSON response. Verify that GOOGLE_SHEETS_WEBHOOK_URL uses the deployed /exec URL and that the web app is accessible to Anyone.'
       console.error('Google Apps Script reported an error:', details)
       return json({
         success: false,
