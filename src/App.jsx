@@ -166,7 +166,11 @@ export default function App() {
       })
       const result = await response.json().catch(() => null)
       if (!response.ok || result?.success !== true || !result?.submissionId) {
-        throw new Error(result?.details || '')
+        throw new Error(
+          result?.details
+            || result?.error
+            || `Request failed with status ${response.status}`,
+        )
       }
 
       setSubmissionId(result.submissionId)
@@ -216,7 +220,11 @@ export default function App() {
       })
       const result = await response.json().catch(() => null)
       if (!response.ok || result?.success !== true) {
-        throw new Error(result?.details || '')
+        throw new Error(
+          result?.details
+            || result?.error
+            || `Request failed with status ${response.status}`,
+        )
       }
       setForm(initialForm)
       setSubmissionDetails(initialSubmissionDetails)

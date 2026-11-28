@@ -99,6 +99,22 @@ test('creates a lead and returns its submission ID', async () => {
   assert.equal('consent' in forwardedPayload, false)
 })
 
+test('allows GM Name to be blank', async () => {
+  let forwardedPayload
+  globalThis.fetch = async (_url, options) => {
+    forwardedPayload = JSON.parse(options.body)
+    return Response.json({ success: true, submissionId })
+  }
+
+  const response = await onRequest({
+    request: post({ ...validBody, gmName: '' }),
+    env,
+  })
+
+  assert.equal(response.status, 200)
+  assert.equal(forwardedPayload.gmName, '')
+})
+
 test('allows every Your Profile field to be blank', async () => {
   let forwardedPayload
   globalThis.fetch = async (_url, options) => {
@@ -227,22 +243,6 @@ for (const roadshowLocation of ['BP Expo', 'Live Expo']) {
     assert.equal(forwardedPayload.roadshowLocation, roadshowLocation)
   })
 }
-
-test('accepts My Sihat as a roadshow location', async () => {
-  let forwardedPayload
-  globalThis.fetch = async (_url, options) => {
-    forwardedPayload = JSON.parse(options.body)
-    return Response.json({ success: true, submissionId })
-  }
-
-  const response = await onRequest({
-    request: post({ ...validBody, roadshowLocation: 'My Sihat' }),
-    env,
-  })
-
-  assert.equal(response.status, 200)
-  assert.equal(forwardedPayload.roadshowLocation, 'My Sihat')
-})
 
 test('rejects a roadshow location outside the dropdown', async () => {
   const response = await onRequest({

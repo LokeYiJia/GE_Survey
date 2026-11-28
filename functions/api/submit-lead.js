@@ -2,7 +2,7 @@ const MAX_BODY_BYTES = 20_000
 
 const BASE_REQUIRED_TEXT_FIELDS = [
   'date', 'roadshowLocation', 'roadshowState', 'fullName', 'mobileNumber', 'icLast4', 'agentName',
-  'agentId', 'agentEmail', 'gmName',
+  'agentId', 'agentEmail',
 ]
 
 const BASE_FIELD_LIMITS = {
