@@ -6,6 +6,7 @@ const LEADS_GATHERING_CONFIG = {
     'GE General Form',
     'Baby Fair Survey',
     'Hospital Survey',
+    'Wedding Expo Survey',
   ],
   scriptBuild: '2026-11-28-current-sheet-names-v3',
   expectedHeaders:

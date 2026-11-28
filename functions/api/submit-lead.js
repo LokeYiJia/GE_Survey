@@ -98,14 +98,94 @@ function isGoogleAppsScriptUrl(value) {
   }
 }
 
-export async function onRequest({ request, env }) {
-  if (request.method !== 'POST') {
-    return json({ success: false, error: 'Method not allowed' }, 405, { Allow: 'POST' })
+function isAllowedGoogleRedirect(value) {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:'
+      && (url.hostname === 'script.google.com'
+        || url.hostname === 'script.googleusercontent.com'
+        || url.hostname.endsWith('.googleusercontent.com'))
+  } catch {
+    return false
+  }
+}
+
+async function fetchGoogleAppsScript(url, options) {
+  const response = await fetch(url, { ...options, redirect: 'manual' })
+  if (![301, 302, 303, 307, 308].includes(response.status)) return response
+
+  const location = response.headers.get('location')
+  const redirectUrl = location ? new URL(location, url).toString() : ''
+  if (!isAllowedGoogleRedirect(redirectUrl)) {
+    throw new Error('Google Apps Script returned an invalid redirect')
   }
 
+  const preserveRequest = response.status === 307 || response.status === 308
+  return fetch(redirectUrl, preserveRequest
+    ? { ...options, redirect: 'follow' }
+    : { method: 'GET', headers: { Accept: 'application/json' }, redirect: 'follow' })
+}
+
+function upstreamSummary(response) {
+  let finalHost = 'unknown'
+  try {
+    if (response.url) finalHost = new URL(response.url).hostname
+  } catch {
+    // Keep the diagnostic host generic.
+  }
+  return `HTTP ${response.status}, content-type ${response.headers.get('content-type') || 'unknown'}, host ${finalHost}`
+}
+
+async function destinationHealth(url) {
+  try {
+    const response = await fetchGoogleAppsScript(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    })
+    const responseText = await response.text()
+    let result = null
+    try {
+      result = JSON.parse(responseText)
+    } catch {
+      // The diagnostic below intentionally does not expose Google's HTML.
+    }
+
+    if (response.ok && result?.success === true && result?.service) {
+      return json({
+        success: true,
+        destination: {
+          service: cleanText(result.service),
+          build: cleanText(result.build),
+          sheet: cleanText(result.destinationSheet),
+        },
+      })
+    }
+
+    return json({
+      success: false,
+      error: 'Apps Script health check failed',
+      details: upstreamSummary(response),
+    }, 502)
+  } catch (error) {
+    return json({
+      success: false,
+      error: 'Unable to reach Apps Script',
+      details: error instanceof Error ? error.message : 'Unknown destination error',
+    }, 502)
+  }
+}
+
+export async function onRequest({ request, env }) {
   if (!isGoogleAppsScriptUrl(env.GOOGLE_SHEETS_WEBHOOK_URL)) {
     console.error('Google Apps Script environment variable is missing or invalid')
     return json({ success: false, error: 'Server configuration error' }, 500)
+  }
+
+  if (request.method === 'GET') {
+    return destinationHealth(env.GOOGLE_SHEETS_WEBHOOK_URL)
+  }
+  if (request.method !== 'POST') {
+    return json({ success: false, error: 'Method not allowed' }, 405, { Allow: 'GET, POST' })
   }
 
   if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) {
@@ -260,11 +340,10 @@ export async function onRequest({ request, env }) {
   }
 
   try {
-    const webhookResponse = await fetch(env.GOOGLE_SHEETS_WEBHOOK_URL, {
+    const webhookResponse = await fetchGoogleAppsScript(env.GOOGLE_SHEETS_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      redirect: 'follow',
     })
     if (!webhookResponse.ok) {
       console.error('Google Apps Script returned', webhookResponse.status)
@@ -281,7 +360,7 @@ export async function onRequest({ request, env }) {
     if (!result || result.success !== true) {
       const details = typeof result?.error === 'string'
         ? result.error.slice(0, 500)
-        : 'Google Apps Script returned a non-JSON response. Verify that GOOGLE_SHEETS_WEBHOOK_URL uses the deployed /exec URL and that the web app is accessible to Anyone.'
+        : `Google Apps Script returned a non-JSON response (${upstreamSummary(webhookResponse)})`
       console.error('Google Apps Script reported an error:', details)
       return json({
         success: false,

@@ -51,13 +51,37 @@ afterEach(() => {
   globalThis.fetch = originalFetch
 })
 
-test('rejects non-POST methods with Allow header', async () => {
+test('rejects unsupported methods with Allow header', async () => {
+  const response = await onRequest({
+    request: new Request('https://survey.example/api/submit-lead', { method: 'PUT' }),
+    env,
+  })
+  assert.equal(response.status, 405)
+  assert.equal(response.headers.get('Allow'), 'GET, POST')
+})
+
+test('health check identifies the Apps Script deployment', async () => {
+  globalThis.fetch = async () => Response.json({
+    success: true,
+    service: 'GE Survey Lead Submission',
+    build: '2026-11-28-current-sheet-names-v3',
+    destinationSheet: 'GE General Form',
+  })
+
   const response = await onRequest({
     request: new Request('https://survey.example/api/submit-lead'),
     env,
   })
-  assert.equal(response.status, 405)
-  assert.equal(response.headers.get('Allow'), 'POST')
+
+  assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), {
+    success: true,
+    destination: {
+      service: 'GE Survey Lead Submission',
+      build: '2026-11-28-current-sheet-names-v3',
+      sheet: 'GE General Form',
+    },
+  })
 })
 
 test('creates a lead and returns its submission ID', async () => {
